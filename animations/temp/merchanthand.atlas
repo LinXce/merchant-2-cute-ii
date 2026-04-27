@@ -1,0 +1,14 @@
+merchanthand.png
+size:1661,913
+filter:Linear,Linear
+scale:0.6
+arm
+bounds:2,2,415,1175
+rotate:90
+shadow
+bounds:2,419,492,1180
+offsets:2,0,519,1180
+rotate:90
+sleeve
+bounds:1184,395,475,516
+offsets:0,0,526,516

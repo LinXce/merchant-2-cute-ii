@@ -1,0 +1,14 @@
+[remap]
+
+importer="spine.skel"
+type="SpineSkeletonFileResource"
+uid="uid://dnisoub43rfgi"
+path="res://.godot/imported/merchanthand.skel-e491a0bddc4c2635de64e6cc9667275d.spskel"
+
+[deps]
+
+source_file="res://animations/merchanthand.skel"
+dest_files=["res://.godot/imported/merchanthand.skel-e491a0bddc4c2635de64e6cc9667275d.spskel"]
+
+[params]
+

@@ -1,0 +1,11 @@
+{
+	"id": "Merchant2CuteII",
+	"name": "Merchant2CuteII",
+	"author": "LinXce",
+	"description": "Provides a cute merchantII",
+	"version": "v1.0.0",
+	"has_pck": true,
+	"has_dll": true,
+	"dependencies": [],
+	"affects_gameplay": false
+}

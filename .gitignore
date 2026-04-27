@@ -1,4 +1,14 @@
 # Godot 4+ specific ignores
 .godot/
 /android/
-temp/*
+
+# Godot 3 specific ignores
+.export/
+.import/
+.exportignore
+.importignore
+
+*.tscn.import
+*.tres.import
+*.res.import
+*.import

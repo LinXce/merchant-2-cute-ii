@@ -1,6 +1,7 @@
 using Godot;
 using HarmonyLib;
 using MegaCrit.Sts2.Core.Bindings.MegaSpine;
+using MegaCrit.Sts2.Core.Helpers;
 using MegaCrit.Sts2.Core.Nodes.Events.Custom;
 using MegaCrit.Sts2.Core.Nodes.Rooms;
 using MegaCrit.Sts2.Core.Nodes.Screens.Shops;
@@ -62,6 +63,20 @@ internal static class MerchantContextResolver
 	}
 }
 
+internal static class MerchantSpineLoader
+{
+	public static MegaSkeletonDataResource? Load(string path)
+	{
+		Resource? rawResource = ResourceLoader.Load<Resource>(path, null, ResourceLoader.CacheMode.Reuse);
+		if (rawResource == null)
+		{
+			return null;
+		}
+
+		return new MegaSkeletonDataResource(rawResource);
+	}
+}
+
 [HarmonyPatch(typeof(NMerchantButton), "_Ready")]
 public static class RealMerchantButtonPatch
 {
@@ -75,10 +90,10 @@ public static class RealMerchantButtonPatch
 				return true;
 			}
 
-			MegaSkeletonDataResource merchantSkeleton = ResourceLoader.Load<MegaSkeletonDataResource>(ModConfig.MerchantTopSpinePath, null, ResourceLoader.CacheMode.Reuse);
+			MegaSkeletonDataResource? merchantSkeleton = MerchantSpineLoader.Load(ModConfig.MerchantBodySpinePath);
 			if (merchantSkeleton == null)
 			{
-				GD.PrintErr($"[Merchant2CuteII] Cannot load top model: {ModConfig.MerchantTopSpinePath}");
+				GD.PrintErr($"[Merchant2CuteII] Cannot load body model: {ModConfig.MerchantBodySpinePath}");
 				return true;
 			}
 
@@ -122,11 +137,10 @@ public static class RealMerchantHandPatch
 
 			if (__instance.GetParent() is Node2D merchantHandParent)
 			{
-				MegaSkeletonDataResource merchantHandSkeleton = ResourceLoader.Load<MegaSkeletonDataResource>(ModConfig.MerchantHandSpinePath, null, ResourceLoader.CacheMode.Reuse);
+				MegaSkeletonDataResource? merchantHandSkeleton = MerchantSpineLoader.Load(ModConfig.MerchantHandSpinePath);
 				if (merchantHandSkeleton != null)
 				{
-					MegaSprite handSprite = new MegaSprite(merchantHandParent);
-					handSprite.SetSkeletonDataRes(merchantHandSkeleton);
+					TaskHelper.RunSafely(ApplyHandReplacementAsync(merchantHandParent, merchantHandSkeleton));
 				}
 				else
 				{
@@ -141,6 +155,21 @@ public static class RealMerchantHandPatch
 		{
 			GD.PrintErr($"[Merchant2CuteII] Error in NMerchantHand._Ready prefix: {ex.Message}");
 		}
+	}
+
+	private static async System.Threading.Tasks.Task ApplyHandReplacementAsync(Node2D merchantHandParent, MegaSkeletonDataResource merchantHandSkeleton)
+	{
+		await merchantHandParent.ToSignal(merchantHandParent.GetTree(), SceneTree.SignalName.ProcessFrame);
+
+		if (!GodotObject.IsInstanceValid(merchantHandParent) || merchantHandParent.GetParent() == null)
+		{
+			return;
+		}
+
+		MegaSprite handSprite = new MegaSprite(merchantHandParent);
+		handSprite.SetSkeletonDataRes(merchantHandSkeleton);
+		merchantHandParent.Scale = ModConfig.MerchantHandScale;
+		GD.Print($"[Merchant2CuteII] Applied merchant hand model and scale: {ModConfig.MerchantHandScale}");
 	}
 }
 

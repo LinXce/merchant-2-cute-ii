@@ -1,0 +1,174 @@
+
+fakemerchantbody.png
+size: 2616,908
+format: RGBA8888
+filter: Linear,Linear
+repeat: none
+base_0000_mask
+  rotate: false
+  xy: 182, 7
+  size: 91, 124
+  orig: 960, 960
+  offset: 537, 654
+  index: -1
+base_0001_front-hair-2
+  rotate: false
+  xy: 275, 17
+  size: 133, 114
+  orig: 960, 960
+  offset: 438, 542
+  index: -1
+base_0002_cape
+  rotate: false
+  xy: 2095, 50
+  size: 296, 407
+  orig: 960, 960
+  offset: 376, 410
+  index: -1
+base_0003_front-hair
+  rotate: true
+  xy: 1452, 32
+  size: 205, 171
+  orig: 960, 960
+  offset: 349, 624
+  index: -1
+base_0004_irides
+  rotate: false
+  xy: 737, 11
+  size: 45, 32
+  orig: 960, 960
+  offset: 417, 664
+  index: -1
+base_0005_eyelash
+  rotate: true
+  xy: 749, 48
+  size: 86, 44
+  orig: 960, 960
+  offset: 408, 664
+  index: -1
+base_0006_eyewhite
+  rotate: false
+  xy: 672, 11
+  size: 63, 32
+  orig: 960, 960
+  offset: 417, 665
+  index: -1
+base_0007_eyebrow
+  rotate: false
+  xy: 410, 4
+  size: 67, 23
+  orig: 960, 960
+  offset: 407, 700
+  index: -1
+base_0008_nose
+  rotate: false
+  xy: 479, 3
+  size: 23, 27
+  orig: 960, 960
+  offset: 403, 643
+  index: -1
+base_0009_mouth
+  rotate: false
+  xy: 182, 2
+  size: 11, 3
+  orig: 960, 960
+  offset: 417, 632
+  index: -1
+base_0010_face
+  rotate: true
+  xy: 2393, 322
+  size: 135, 187
+  orig: 960, 960
+  offset: 405, 598
+  index: -1
+base_0011_ears
+  rotate: true
+  xy: 795, 23
+  size: 52, 46
+  orig: 960, 960
+  offset: 503, 635
+  index: -1
+base_0012_body
+  rotate: true
+  xy: 410, 29
+  size: 102, 63
+  orig: 960, 960
+  offset: 485, 488
+  index: -1
+base_0013_opai
+  rotate: false
+  xy: 2, 4
+  size: 178, 127
+  orig: 960, 960
+  offset: 407, 410
+  index: -1
+base_0014_handwear
+  rotate: false
+  xy: 2095, 459
+  size: 517, 447
+  orig: 960, 960
+  offset: 190, 201
+  index: -1
+base_0015_neck
+  rotate: true
+  xy: 672, 45
+  size: 89, 75
+  orig: 960, 960
+  offset: 426, 555
+  index: -1
+base_0016_footwear
+  rotate: false
+  xy: 475, 32
+  size: 195, 99
+  orig: 960, 960
+  offset: 175, 135
+  index: -1
+base_0017_legwear
+  rotate: false
+  xy: 1625, 46
+  size: 400, 191
+  orig: 960, 960
+  offset: 326, 116
+  index: -1
+base_0018_bottomwear
+  rotate: true
+  xy: 2393, 37
+  size: 283, 141
+  orig: 960, 960
+  offset: 321, 198
+  index: -1
+base_0019_back-hair
+  rotate: true
+  xy: 1177, 20
+  size: 217, 273
+  orig: 960, 960
+  offset: 383, 542
+  index: -1
+base_0020_topwear
+  rotate: false
+  xy: 1177, 239
+  size: 916, 667
+  orig: 960, 960
+  offset: 24, 150
+  index: -1
+fake
+  rotate: true
+  xy: 591, 136
+  size: 770, 584
+  orig: 806, 768
+  offset: 12, 169
+  index: -1
+fake_ol
+  rotate: true
+  xy: 2, 133
+  size: 773, 587
+  orig: 806, 768
+  offset: 12, 169
+  index: -1
+shadow
+  rotate: false
+  xy: 795, 77
+  size: 254, 57
+  orig: 257, 57
+  offset: 3, 0
+  index: -1

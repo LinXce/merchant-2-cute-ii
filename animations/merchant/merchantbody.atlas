@@ -1,0 +1,34 @@
+
+merchantbody.png
+size: 1248,1656
+format: RGBA8888
+filter: Linear,Linear
+repeat: none
+idle
+  rotate: true
+  xy: 626, 9
+  size: 818, 619
+  orig: 859, 819
+  offset: 17, 188
+  index: -1
+idle_ol
+  rotate: true
+  xy: 2, 829
+  size: 822, 623
+  orig: 859, 819
+  offset: 17, 188
+  index: -1
+poison
+  rotate: true
+  xy: 627, 830
+  size: 821, 618
+  orig: 859, 819
+  offset: 15, 189
+  index: -1
+poison_ol
+  rotate: true
+  xy: 2, 2
+  size: 825, 622
+  orig: 859, 819
+  offset: 15, 189
+  index: -1

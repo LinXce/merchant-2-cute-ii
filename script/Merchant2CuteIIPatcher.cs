@@ -2,6 +2,7 @@ using Godot;
 using HarmonyLib;
 using MegaCrit.Sts2.Core.Bindings.MegaSpine;
 using MegaCrit.Sts2.Core.Helpers;
+using MegaCrit.Sts2.Core.Nodes.Combat;
 using MegaCrit.Sts2.Core.Nodes.Events.Custom;
 using MegaCrit.Sts2.Core.Nodes.Rooms;
 using MegaCrit.Sts2.Core.Nodes.Screens.Shops;
@@ -365,6 +366,43 @@ public static class MerchantRoomFoulPotionPatch
 		catch (System.Exception ex)
 		{
 			GD.PrintErr($"[Merchant2CuteII] Error adjusting FoulPotionThrown: {ex.Message}");
+		}
+	}
+}
+
+[HarmonyPatch(typeof(NCreatureVisuals), "_Ready")]
+public static class FakeMerchantMonsterPatch
+{
+	[HarmonyPrefix]
+	public static void Prefix(NCreatureVisuals __instance)
+	{
+		if (__instance == null)
+		{
+			return;
+		}
+
+		if (__instance.Name.ToString() != "FakeMerchantMonster")
+		{
+			return;
+		}
+
+		Node2D? visuals = __instance.GetNodeOrNull<Node2D>("%Visuals");
+		if (visuals == null)
+		{
+			GD.PrintErr("[Merchant2CuteII] Cannot find %Visuals in FakeMerchantMonster");
+			return;
+		}
+
+		MegaSkeletonDataResource? skeleton = MerchantSpineLoader.Load(ModConfig.FakeMerchantBodySpinePath);
+		if (skeleton == null && MerchantSpineLoader.GetRaw(ModConfig.FakeMerchantBodySpinePath) == null)
+		{
+			GD.PrintErr($"[Merchant2CuteII] Cannot load fake merchant battle model: {ModConfig.FakeMerchantBodySpinePath}");
+			return;
+		}
+
+		if (!SkeletonAssigner.TryAssign(visuals, ModConfig.FakeMerchantBodySpinePath, skeleton))
+		{
+			GD.PrintErr("[Merchant2CuteII] Failed to assign fake merchant battle model");
 		}
 	}
 }

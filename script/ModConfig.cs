@@ -4,6 +4,7 @@ namespace Merchant2CuteII.script;
 
 public static class ModConfig
 {
+	// RealMerchant
 	public const float RealMerchantVisualOffsetX = 1260f;
 	public const float RealMerchantVisualOffsetY = 620f;
 	public const float RealMerchantVisualScaleX = 0.18f;
@@ -12,10 +13,11 @@ public static class ModConfig
 	public const float RealPointAtTargetOffsetY = 0f;
 	public const float RealMerchantHandScaleX = 0.4f;
 	public const float RealMerchantHandScaleY = 0.4f;
-	public const float FakeMerchantVisualOffsetX = 1260f;
-	public const float FakeMerchantVisualOffsetY = 620f;
-	public const float FakeMerchantVisualScaleX = 1.18f;
-	public const float FakeMerchantVisualScaleY = 1.18f;
+	// FakeMerchant
+	public const float FakeMerchantVisualOffsetX = 0f;
+	public const float FakeMerchantVisualOffsetY = 0f;
+	public const float FakeMerchantVisualScaleX = 0.36f;
+	public const float FakeMerchantVisualScaleY = 0.36f;
 	public const float FakePointAtTargetOffsetX = 0f;
 	public const float FakePointAtTargetOffsetY = -100f;
 	public const float FakeMerchantHandScaleX = 0.4f;

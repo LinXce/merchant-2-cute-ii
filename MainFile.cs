@@ -18,10 +18,10 @@ public static class Merchant2CuteIIMod
 		try
 		{
 			// safe if paths missing - MerchantSpineLoader.Preload will handle nulls/errors
-			script.MerchantSpineLoader.Preload(script.ModConfig.MerchantBodySpinePath);
-			script.MerchantSpineLoader.Preload(script.ModConfig.MerchantHandSpinePath);
-			script.MerchantSpineLoader.Preload(script.ModConfig.FakeMerchantBodySpinePath);
-			script.MerchantSpineLoader.Preload(script.ModConfig.FakeMerchantHandSpinePath);
+			script.MerchantSpineLoader.Preload(script.ModConfig.Paths.MerchantBodySpine);
+			script.MerchantSpineLoader.Preload(script.ModConfig.Paths.MerchantHandSpine);
+			script.MerchantSpineLoader.Preload(script.ModConfig.Paths.FakeMerchantBodySpine);
+			script.MerchantSpineLoader.Preload(script.ModConfig.Paths.FakeMerchantHandSpine);
 		}
 		catch (System.Exception ex)
 		{

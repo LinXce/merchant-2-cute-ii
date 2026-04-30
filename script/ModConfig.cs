@@ -4,45 +4,31 @@ namespace Merchant2CuteII.script;
 
 public static class ModConfig
 {
-	// RealMerchant
-	public const float RealMerchantVisualOffsetX = 1260f;
-	public const float RealMerchantVisualOffsetY = 620f;
-	public const float RealMerchantVisualScaleX = 0.18f;
-	public const float RealMerchantVisualScaleY = 0.18f;
-	public const float RealPointAtTargetOffsetX = 0f;
-	public const float RealPointAtTargetOffsetY = 0f;
-	public const float RealMerchantHandScaleX = 0.4f;
-	public const float RealMerchantHandScaleY = 0.4f;
-	// FakeMerchant
-	public const float FakeMerchantVisualOffsetX = 0f;
-	public const float FakeMerchantVisualOffsetY = 0f;
-	public const float FakeMerchantVisualScaleX = 0.36f;
-	public const float FakeMerchantVisualScaleY = 0.36f;
-	public const float FakePointAtTargetOffsetX = 0f;
-	public const float FakePointAtTargetOffsetY = -100f;
-	public const float FakeMerchantHandScaleX = 0.4f;
-	public const float FakeMerchantHandScaleY = 0.4f;
-	public const string MerchantBodySpinePath = "res://animations/merchant/merchant_body_L.tres";
-	public const string MerchantHandSpinePath = "res://animations/merchant/merchant_hand_L.tres";
-	public const string FakeMerchantBodySpinePath = "res://animations/fake/fake_merchant_body_L.tres";
-	public const string FakeMerchantHandSpinePath = "res://animations/fake/fake_merchant_hand_L.tres";
+	public static class Paths
+	{
+		public const string MerchantBodySpine = "res://animations/merchant/merchant_body_L.tres";
+		public const string MerchantHandSpine = "res://animations/merchant/merchant_hand_L.tres";
+		public const string FakeMerchantBodySpine = "res://animations/fake/fake_merchant_body_L.tres";
+		public const string FakeMerchantHandSpine = "res://animations/fake/fake_merchant_hand_L.tres";
+		public const string MerchantLegTexture = "res://animations/merchant/leg.png";
+	}
 
-	// Backward-compatible alias: old config name maps to top model replacement.
-	public const string SpineAnimationPath = MerchantBodySpinePath;
+	public static class Merchant
+	{
+		public static Vector2 VisualPositionOffset => new Vector2(1260f, 620f);
+		public static Vector2 VisualScale => new Vector2(0.18f, 0.18f);
+		public static Vector2 HandScale => new Vector2(0.4f, 0.4f);
+		public static Vector2 PointAtTargetOffset => Vector2.Zero;
+		public static Vector2 LegPosition => new Vector2(50f, -810f);
+		public static Vector2 LegScale => new Vector2(0.75f, 0.75f);
+		public static float LegRotationDegrees => -6f;
+	}
 
-	public static Vector2 RealMerchantVisualPositionOffset => new Vector2(RealMerchantVisualOffsetX, RealMerchantVisualOffsetY);
-
-	public static Vector2 RealMerchantVisualScale => new Vector2(RealMerchantVisualScaleX, RealMerchantVisualScaleY);
-
-	public static Vector2 RealMerchantHandScale => new Vector2(RealMerchantHandScaleX, RealMerchantHandScaleY);
-
-	public static Vector2 RealPointAtTargetOffset => new Vector2(RealPointAtTargetOffsetX, RealPointAtTargetOffsetY);
-
-	public static Vector2 FakeMerchantVisualPositionOffset => new Vector2(FakeMerchantVisualOffsetX, FakeMerchantVisualOffsetY);
-
-	public static Vector2 FakeMerchantVisualScale => new Vector2(FakeMerchantVisualScaleX, FakeMerchantVisualScaleY);
-
-	public static Vector2 FakeMerchantHandScale => new Vector2(FakeMerchantHandScaleX, FakeMerchantHandScaleY);
-
-	public static Vector2 FakePointAtTargetOffset => new Vector2(FakePointAtTargetOffsetX, FakePointAtTargetOffsetY);
+	public static class FakeMerchant
+	{
+		public static Vector2 VisualPositionOffset => Vector2.Zero;
+		public static Vector2 VisualScale => new Vector2(0.36f, 0.36f);
+		public static Vector2 HandScale => new Vector2(0.4f, 0.4f);
+		public static Vector2 PointAtTargetOffset => new Vector2(0f, -100f);
+	}
 }

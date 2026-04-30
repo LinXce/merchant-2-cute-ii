@@ -177,12 +177,12 @@ public static class MerchantButtonPatch
 	{
 		if (MerchantContextResolver.IsRealMerchantButton(button))
 		{
-			return ModConfig.MerchantBodySpinePath;
+			return ModConfig.Paths.MerchantBodySpine;
 		}
 
 		if (MerchantContextResolver.IsFakeMerchantButton(button))
 		{
-			return ModConfig.FakeMerchantBodySpinePath;
+			return ModConfig.Paths.FakeMerchantBodySpine;
 		}
 
 		return null;
@@ -191,15 +191,15 @@ public static class MerchantButtonPatch
 	private static Vector2 GetMerchantVisualPositionOffset(NMerchantButton button)
 	{
 		return MerchantContextResolver.IsFakeMerchantButton(button)
-			? ModConfig.FakeMerchantVisualPositionOffset
-			: ModConfig.RealMerchantVisualPositionOffset;
+			? ModConfig.FakeMerchant.VisualPositionOffset
+			: ModConfig.Merchant.VisualPositionOffset;
 	}
 
 	private static Vector2 GetMerchantVisualScale(NMerchantButton button)
 	{
 		return MerchantContextResolver.IsFakeMerchantButton(button)
-			? ModConfig.FakeMerchantVisualScale
-			: ModConfig.RealMerchantVisualScale;
+			? ModConfig.FakeMerchant.VisualScale
+			: ModConfig.Merchant.VisualScale;
 	}
 }
 
@@ -239,12 +239,12 @@ public static class MerchantHandPatch
 	{
 		if (MerchantContextResolver.IsRealMerchantHand(hand))
 		{
-			return ModConfig.MerchantHandSpinePath;
+			return ModConfig.Paths.MerchantHandSpine;
 		}
 
 		if (MerchantContextResolver.IsFakeMerchantHand(hand))
 		{
-			return ModConfig.FakeMerchantHandSpinePath;
+			return ModConfig.Paths.FakeMerchantHandSpine;
 		}
 
 		return null;
@@ -253,8 +253,8 @@ public static class MerchantHandPatch
 	private static Vector2 GetMerchantHandScale(NMerchantHand hand)
 	{
 		return MerchantContextResolver.IsFakeMerchantHand(hand)
-			? ModConfig.FakeMerchantHandScale
-			: ModConfig.RealMerchantHandScale;
+			? ModConfig.FakeMerchant.HandScale
+			: ModConfig.Merchant.HandScale;
 	}
 
 	private static async System.Threading.Tasks.Task ApplyHandReplacementAsync(NMerchantHand hand, Node2D merchantHandParent, string handPath, MegaSkeletonDataResource? merchantHandSkeleton)
@@ -275,7 +275,7 @@ public static class MerchantHandPatch
 		}
 
 		// 等待少量帧以便 spine native 侧初始化，避免在随后的帧中产生大量 "Native Spine object not set." 日志
-		for (int i = 0; i < 4; i++)
+		for (int i = 0; i < 8; i++)
 		{
 			await merchantHandParent.ToSignal(merchantHandParent.GetTree(), SceneTree.SignalName.ProcessFrame);
 		}
@@ -328,8 +328,8 @@ public static class MerchantHandPointAtTargetPatch
 	private static Vector2 GetPointAtTargetOffset(NMerchantHand hand)
 	{
 		return MerchantContextResolver.IsFakeMerchantHand(hand)
-			? ModConfig.FakePointAtTargetOffset
-			: ModConfig.RealPointAtTargetOffset;
+			? ModConfig.FakeMerchant.PointAtTargetOffset
+			: ModConfig.Merchant.PointAtTargetOffset;
 	}
 }
 
@@ -393,17 +393,122 @@ public static class FakeMerchantMonsterPatch
 			return;
 		}
 
-		MegaSkeletonDataResource? skeleton = MerchantSpineLoader.Load(ModConfig.FakeMerchantBodySpinePath);
-		if (skeleton == null && MerchantSpineLoader.GetRaw(ModConfig.FakeMerchantBodySpinePath) == null)
+		MegaSkeletonDataResource? skeleton = MerchantSpineLoader.Load(ModConfig.Paths.FakeMerchantBodySpine);
+		if (skeleton == null && MerchantSpineLoader.GetRaw(ModConfig.Paths.FakeMerchantBodySpine) == null)
 		{
-			GD.PrintErr($"[Merchant2CuteII] Cannot load fake merchant battle model: {ModConfig.FakeMerchantBodySpinePath}");
+			GD.PrintErr($"[Merchant2CuteII] Cannot load fake merchant battle model: {ModConfig.Paths.FakeMerchantBodySpine}");
 			return;
 		}
 
-		if (!SkeletonAssigner.TryAssign(visuals, ModConfig.FakeMerchantBodySpinePath, skeleton))
+		if (!SkeletonAssigner.TryAssign(visuals, ModConfig.Paths.FakeMerchantBodySpine, skeleton))
 		{
 			GD.PrintErr("[Merchant2CuteII] Failed to assign fake merchant battle model");
 		}
+	}
+}
+
+[HarmonyPatch(typeof(NMerchantInventory), "_Ready")]
+public static class MerchantInventoryLegPatch
+{
+	[HarmonyPrefix]
+	public static void Prefix(NMerchantInventory __instance)
+	{
+		if (__instance == null)
+		{
+			return;
+		}
+
+		Control? inventoryRoot = __instance;
+		Control? slotsContainer = __instance.GetNodeOrNull<Control>("%SlotsContainer");
+		if (slotsContainer == null)
+		{
+			GD.PrintErr("[Merchant2CuteII] Cannot find %SlotsContainer in MerchantInventory");
+			return;
+		}
+
+		if (slotsContainer.GetNodeOrNull<TextureRect>("MerchantInventoryLeg") != null)
+		{
+			return;
+		}
+
+		Texture2D? texture = GD.Load<Texture2D>(ModConfig.Paths.MerchantLegTexture)
+			?? GD.Load<Texture2D>(ModConfig.Paths.MerchantLegTexture);
+		if (texture == null)
+		{
+			GD.PrintErr($"[Merchant2CuteII] Cannot load merchant leg texture: {ModConfig.Paths.MerchantLegTexture} or {ModConfig.Paths.MerchantLegTexture}");
+			return;
+		}
+
+		Vector2 legPosition = new Vector2(
+			slotsContainer.Position.X + ModConfig.Merchant.LegPosition.X,
+			slotsContainer.Position.Y + ModConfig.Merchant.LegPosition.Y
+		);
+
+		TextureRect decoration = new TextureRect
+		{
+			Name = "MerchantInventoryLeg",
+			Texture = texture,
+			Position = legPosition,
+			RotationDegrees = ModConfig.Merchant.LegRotationDegrees,
+			Scale = ModConfig.Merchant.LegScale,
+			MouseFilter = Control.MouseFilterEnum.Ignore,
+			// ZAsRelative = false,
+			ZIndex = 0,
+			ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+			StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
+			CustomMinimumSize = texture.GetSize()
+		};
+		inventoryRoot.AddChild(decoration);
+		inventoryRoot.MoveChild(decoration, slotsContainer.GetIndex() + 1);
+	}
+}
+
+[HarmonyPatch(typeof(NMerchantInventory), "Open")]
+public static class MerchantInventoryLegOpenPatch
+{
+	[HarmonyPostfix]
+	public static void Postfix(NMerchantInventory __instance)
+	{
+		MerchantInventoryLegMotion.TweenLegY(__instance, 0.7f, Tween.TransitionType.Quint, Tween.EaseType.Out, 80f);
+	}
+}
+
+[HarmonyPatch(typeof(NMerchantInventory), "Close")]
+public static class MerchantInventoryLegClosePatch
+{
+	[HarmonyPostfix]
+	public static void Postfix(NMerchantInventory __instance)
+	{
+		MerchantInventoryLegMotion.TweenLegY(__instance, 0.5f, Tween.TransitionType.Cubic, Tween.EaseType.Out, -1000f);
+	}
+}
+
+internal static class MerchantInventoryLegMotion
+{
+	public static void TweenLegY(NMerchantInventory inventory, double duration, Tween.TransitionType transition, Tween.EaseType ease, float slotsTargetY)
+	{
+		if (inventory == null)
+		{
+			return;
+		}
+
+		Control? slotsContainer = inventory.GetNodeOrNull<Control>("%SlotsContainer");
+		TextureRect? leg = inventory.GetNodeOrNull<TextureRect>("MerchantInventoryLeg");
+		if (slotsContainer == null || leg == null)
+		{
+			return;
+		}
+
+		Vector2 targetPosition = new Vector2(
+			slotsContainer.Position.X + ModConfig.Merchant.LegPosition.X,
+			slotsTargetY + ModConfig.Merchant.LegPosition.Y
+		);
+
+		Tween tween = inventory.CreateTween();
+		tween.TweenProperty(leg, "position", targetPosition, duration)
+			.SetEase(ease)
+			.SetTrans(transition)
+			.FromCurrent();
 	}
 }
 

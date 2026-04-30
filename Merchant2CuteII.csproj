@@ -46,13 +46,14 @@
         </Reference>
     </ItemGroup>
 
-    <!-- 自动复制 DLL 到 Mods 文件夹 -->
+    <!-- 自动复制 DLL -->
     <Target Name="CopyToModsFolder" AfterTargets="Build">
         <PropertyGroup>
             <ModTargetDir>$(ModOutputPath)</ModTargetDir>
         </PropertyGroup>
         <MakeDir Directories="$(ModTargetDir)" Condition="!Exists('$(ModTargetDir)')" />
         <Copy SourceFiles="$(OutputPath)$(AssemblyName).dll" DestinationFolder="$(ModTargetDir)" />
+		<Copy SourceFiles="$(OutputPath)$(AssemblyName).dll" DestinationFolder="./" />
         <Message Text="Copied $(AssemblyName).dll to $(ModTargetDir)" Importance="high" />
     </Target>
 </Project>

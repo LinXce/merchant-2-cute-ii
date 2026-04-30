@@ -19,8 +19,8 @@ public static class ModConfig
 		public static Vector2 VisualScale => new Vector2(0.18f, 0.18f);
 		public static Vector2 HandScale => new Vector2(0.4f, 0.4f);
 		public static Vector2 PointAtTargetOffset => Vector2.Zero;
-		public static Vector2 LegPosition => new Vector2(50f, -810f);
-		public static Vector2 LegScale => new Vector2(0.75f, 0.75f);
+		public static Vector2 LegPosition => new Vector2(0f, -900f);
+		public static Vector2 LegScale => new Vector2(0.8f, 0.8f);
 		public static float LegRotationDegrees => -6f;
 	}
 

@@ -3,7 +3,7 @@
 	"name": "Merchant2CuteII",
 	"author": "LinXce",
 	"description": "Provides a cute merchantII",
-	"version": "v1.1.1",
+	"version": "v1.2.0",
 	"has_pck": true,
 	"has_dll": true,
 	"dependencies": [],

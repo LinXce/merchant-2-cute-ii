@@ -286,6 +286,7 @@ public static class MerchantHandPatch
 		if (GodotObject.IsInstanceValid(hand))
 		{
 			TryRebindHandInternals(hand, merchantHandParent);
+			ApplyVariantAnimation(merchantHandParent);
 		}
 	}
 
@@ -302,12 +303,31 @@ public static class MerchantHandPatch
 			animField?.SetValue(hand, newAnimController);
 			boneField?.SetValue(hand, newBone);
 
-			newAnimController.GetAnimationState().SetAnimation("default");
+			ApplyVariantAnimation(merchantHandParent);
 		}
 		catch (System.Exception ex)
 		{
 			GD.PrintErr($"[Merchant2CuteII] Hand internals rebind failed: {ex.Message}");
 		}
+	}
+
+	private static void ApplyVariantAnimation(Node2D merchantHandParent)
+	{
+		try
+		{
+			MegaSprite ms = new MegaSprite(merchantHandParent);
+			string variant = ModConfig.Options.HandVariant;
+			string animationName = variant == "hand" ? "default" : variant;
+			if (ms.HasAnimation(animationName))
+			{
+				ms.GetAnimationState().SetAnimation(animationName);
+			}
+			else if (ms.HasAnimation("default"))
+			{
+				ms.GetAnimationState().SetAnimation("default");
+			}
+		}
+		catch { }
 	}
 }
 
@@ -418,6 +438,11 @@ public static class MerchantInventoryLegPatch
 			return;
 		}
 
+		if (__instance is NFakeMerchantInventory)
+		{
+			return;
+		}
+
 		Control? inventoryRoot = __instance;
 		Control? slotsContainer = __instance.GetNodeOrNull<Control>("%SlotsContainer");
 		if (slotsContainer == null)
@@ -452,6 +477,7 @@ public static class MerchantInventoryLegPatch
 			RotationDegrees = ModConfig.Merchant.LegRotationDegrees,
 			Scale = ModConfig.Merchant.LegScale,
 			MouseFilter = Control.MouseFilterEnum.Ignore,
+			Visible = !ModConfig.Options.UseFoot,
 			// ZAsRelative = false,
 			ZIndex = 0,
 			ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,

@@ -1,0 +1,185 @@
+using System;
+using Godot;
+using MegaCrit.Sts2.Core.Bindings.MegaSpine;
+using MegaCrit.Sts2.Core.DevConsole;
+using MegaCrit.Sts2.Core.DevConsole.ConsoleCommands;
+using MegaCrit.Sts2.Core.Entities.Players;
+
+namespace MegaCrit.Sts2.Core.DevConsole.ConsoleCommands;
+
+public class MerchantConsoleCmd : AbstractConsoleCmd
+{
+	public override string CmdName => "merchant";
+
+	public override string Args => "<hand|foot|toggle|status>";
+
+	public override string Description => "Switch merchant skeleton variant";
+
+	public override bool IsNetworked => false;
+
+	private const string VariantFile = "user://merchant2cute_variant.txt";
+
+	static MerchantConsoleCmd()
+	{
+		try
+		{
+			var fa = Godot.FileAccess.Open(VariantFile, Godot.FileAccess.ModeFlags.Read);
+			if (fa != null)
+			{
+				string v = fa.GetLine().Trim().ToLowerInvariant();
+				if (v == "foot" || v == "hand")
+				{
+					Merchant2CuteII.script.ModConfig.Options.HandVariant = v;
+				}
+				fa.Close();
+			}
+
+			// apply at startup
+			ApplyToExistingHands();
+			UpdateLegVisibility(!Merchant2CuteII.script.ModConfig.Options.UseFoot);
+		}
+		catch { }
+	}
+
+	public override CmdResult Process(Player? issuingPlayer, string[] args)
+	{
+		string verb = args.Length > 0 ? args[0].ToLowerInvariant() : "status";
+
+		if (verb == "status")
+		{
+			return new CmdResult(success: true, msg: $"Merchant variant: {Merchant2CuteII.script.ModConfig.Options.HandVariant}");
+		}
+
+		if (verb != "hand" && verb != "foot" && verb != "toggle")
+		{
+			return new CmdResult(success: false, msg: "Usage: merchant hand|foot|toggle|status");
+		}
+
+		string current = Merchant2CuteII.script.ModConfig.Options.HandVariant;
+		string next = verb == "toggle" ? (current == "hand" ? "foot" : "hand") : verb;
+
+		Merchant2CuteII.script.ModConfig.Options.HandVariant = next;
+
+		// persist
+		try
+		{
+			var fa = Godot.FileAccess.Open(VariantFile, Godot.FileAccess.ModeFlags.Write);
+			if (fa != null)
+			{
+				fa.StoreLine(next);
+				fa.Close();
+			}
+		}
+		catch (Exception ex)
+		{
+			GD.PrintErr($"[Merchant2CuteII] Failed to save variant: {ex.Message}");
+		}
+
+		int updatedCount = ApplyToExistingHands();
+		try
+		{
+			bool showLeg = !Merchant2CuteII.script.ModConfig.Options.UseFoot;
+			UpdateLegVisibility(showLeg);
+		}
+		catch (Exception ex)
+		{
+			GD.PrintErr($"[Merchant2CuteII] Error updating leg visibility: {ex.Message}");
+		}
+
+		return new CmdResult(success: true, msg: $"Set merchant variant to {next}. Updated {updatedCount} node(s).");
+	}
+
+	private static int ApplyToExistingHands()
+	{
+		SceneTree? tree = Engine.GetMainLoop() as SceneTree;
+		if (tree == null || tree.Root == null)
+			return 0;
+
+		int updated = 0;
+		FindAndApplyRecursive(tree.Root, ref updated);
+		return updated;
+	}
+
+	private static void FindAndApplyRecursive(Node root, ref int updated)
+	{
+		if (root == null)
+			return;
+
+		foreach (Node child in root.GetChildren())
+		{
+			try
+			{
+				if (child.GetClass().ToString() == "NMerchantHand")
+				{
+					if (TryApplyToHand(child))
+					{
+						updated++;
+					}
+				}
+			}
+			catch { }
+
+			FindAndApplyRecursive(child, ref updated);
+		}
+	}
+
+	private static bool TryApplyToHand(Node hand)
+	{
+		Node? parent = hand.GetParent();
+		if (parent == null)
+			return false;
+
+		try
+		{
+			MegaSprite ms = new MegaSprite(parent);
+			string variant = Merchant2CuteII.script.ModConfig.Options.HandVariant;
+			string animationName = variant == "hand" ? "default" : variant;
+			if (ms.HasAnimation(animationName))
+			{
+				ms.GetAnimationState().SetAnimation(animationName);
+			}
+			else if (ms.HasAnimation("default"))
+			{
+				ms.GetAnimationState().SetAnimation("default");
+			}
+		}
+		catch (Exception ex)
+		{
+			GD.PrintErr($"[Merchant2CuteII] Set animation failed: {ex.Message}");
+		}
+
+		return true;
+	}
+
+
+	private static void UpdateLegVisibility(bool show)
+	{
+		SceneTree? tree = Engine.GetMainLoop() as SceneTree;
+		if (tree == null || tree.Root == null)
+			return;
+
+		UpdateLegVisibilityStatic(tree.Root, show);
+	}
+
+	private static void UpdateLegVisibilityStatic(Node root, bool show)
+	{
+		if (root == null)
+			return;
+
+		foreach (Node child in root.GetChildren())
+		{
+			try
+			{
+				if (child is TextureRect tr && tr.Name == "MerchantInventoryLeg")
+				{
+					tr.Visible = show;
+				}
+			}
+			catch { }
+
+			UpdateLegVisibilityStatic(child, show);
+		}
+	}
+
+}
+

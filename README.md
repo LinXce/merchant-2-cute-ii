@@ -9,6 +9,10 @@
 1. 下载 [Releases] 的Merchant2CuteII压缩包 解压到杀戮尖塔2游戏目录下的mods文件夹。
 2. 如果没有mods文件夹可以手动创建。
 
+### v1.2.0-260501
+
+更新hand-foot切换。
+
 ### v1.1.1-260430
 
 ![image-20260430211814082](README.assets/image-20260430211814082.png)

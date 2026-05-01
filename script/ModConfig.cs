@@ -6,11 +6,46 @@ public static class ModConfig
 {
 	public static class Paths
 	{
-		public const string MerchantBodySpine = "res://animations/merchant/merchant_body_L.tres";
-		public const string MerchantHandSpine = "res://animations/merchant/merchant_hand_L.tres";
-		public const string FakeMerchantBodySpine = "res://animations/fake/fake_merchant_body_L.tres";
-		public const string FakeMerchantHandSpine = "res://animations/fake/fake_merchant_hand_L.tres";
-		public const string MerchantLegTexture = "res://animations/merchant/leg.png";
+		public static string MerchantBodySpine => "res://animations/merchant/merchant_body_L.tres";
+		public static string MerchantHandSpine => "res://animations/merchant/merchant_hand_L.tres";
+		public static string MerchantFootSpine => string.Empty;
+		public static string FakeMerchantBodySpine => "res://animations/fake/fake_merchant_body_L.tres";
+		public static string FakeMerchantHandSpine => "res://animations/fake/fake_merchant_hand_L.tres";
+		public static string FakeMerchantFootSpine => string.Empty;
+		public static string MerchantLegTexture => "res://animations/merchant/leg.png";
+	}
+
+	public static class Options
+	{
+		private static string _handVariant = "hand";
+
+		public static string HandVariant
+		{
+			get => _handVariant;
+			set => _handVariant = NormalizeVariant(value);
+		}
+
+		public static bool UseFoot => HandVariant == "foot";
+
+		public static string GetActiveMerchantHandPath()
+		{
+			return UseFoot && !string.IsNullOrEmpty(Paths.MerchantFootSpine)
+				? Paths.MerchantFootSpine
+				: Paths.MerchantHandSpine;
+		}
+
+		public static string GetActiveFakeMerchantHandPath()
+		{
+			return UseFoot && !string.IsNullOrEmpty(Paths.FakeMerchantFootSpine)
+				? Paths.FakeMerchantFootSpine
+				: Paths.FakeMerchantHandSpine;
+		}
+
+		private static string NormalizeVariant(string? variant)
+		{
+			string normalized = (variant ?? string.Empty).Trim().ToLowerInvariant();
+			return normalized == "foot" ? "foot" : "hand";
+		}
 	}
 
 	public static class Merchant

@@ -15,6 +15,8 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+
+// ?Merchant2CuteII - A Slay the Spire 2 Mod
 using Godot;
 using HarmonyLib;
 using MegaCrit.Sts2.Core.Modding;

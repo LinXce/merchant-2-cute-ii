@@ -1,11 +1,10 @@
-using Godot;
+﻿using Godot;
 using HarmonyLib;
 using MegaCrit.Sts2.Core.Bindings.MegaSpine;
-using MegaCrit.Sts2.Core.Helpers;
-using MegaCrit.Sts2.Core.Nodes.Combat;
 using MegaCrit.Sts2.Core.Nodes.Events.Custom;
 using MegaCrit.Sts2.Core.Nodes.Rooms;
 using MegaCrit.Sts2.Core.Nodes.Screens.Shops;
+using MegaCrit.Sts2.Core.Random;
 
 namespace Merchant2CuteII.script;
 
@@ -19,16 +18,6 @@ internal static class MerchantContextResolver
 	public static bool IsFakeMerchantButton(NMerchantButton button)
 	{
 		return TryGetMerchantSceneRoot(button) is NFakeMerchant;
-	}
-
-	public static bool IsRealMerchantHand(NMerchantHand hand)
-	{
-		return TryGetMerchantInventoryRoot(hand) is NMerchantInventory inventory && inventory is not NFakeMerchantInventory;
-	}
-
-	public static bool IsFakeMerchantHand(NMerchantHand hand)
-	{
-		return TryGetMerchantInventoryRoot(hand) is NFakeMerchantInventory;
 	}
 
 	private static Node? TryGetMerchantSceneRoot(Node node)
@@ -46,96 +35,6 @@ internal static class MerchantContextResolver
 
 		return null;
 	}
-
-	private static NMerchantInventory? TryGetMerchantInventoryRoot(Node node)
-	{
-		Node? current = node;
-		while (current != null)
-		{
-			if (current is NMerchantInventory inventory)
-			{
-				return inventory;
-			}
-
-			current = current.GetParent();
-		}
-
-		return null;
-	}
-}
-
-internal static class MerchantSpineLoader
-{
-	private static readonly Dictionary<string, Resource> _cache = new();
-
-	public static void Preload(string path)
-	{
-		if (string.IsNullOrEmpty(path))
-		{
-			return;
-		}
-
-		if (_cache.ContainsKey(path))
-		{
-			return;
-		}
-
-		try
-		{
-			Resource? r = ResourceLoader.Load<Resource>(path, null, ResourceLoader.CacheMode.Reuse);
-			if (r != null)
-			{
-				_cache[path] = r;
-			}
-		}
-		catch (System.Exception ex)
-		{
-			GD.PrintErr($"[Merchant2CuteII] Preload failed for {path}: {ex.Message}");
-		}
-	}
-
-	public static MegaSkeletonDataResource? Load(string path)
-	{
-		Resource? rawResource = null;
-
-		if (!string.IsNullOrEmpty(path) && _cache.TryGetValue(path, out var cached))
-		{
-			rawResource = cached;
-		}
-		else
-		{
-			rawResource = ResourceLoader.Load<Resource>(path, null, ResourceLoader.CacheMode.Reuse);
-		}
-
-		if (rawResource == null)
-		{
-			return null;
-		}
-
-		return new MegaSkeletonDataResource(rawResource);
-	}
-
-	public static Resource? GetRaw(string path)
-	{
-		if (string.IsNullOrEmpty(path))
-		{
-			return null;
-		}
-
-		if (_cache.TryGetValue(path, out var cached))
-		{
-			return cached;
-		}
-
-		try
-		{
-			return ResourceLoader.Load<Resource>(path, null, ResourceLoader.CacheMode.Reuse);
-		}
-		catch
-		{
-			return null;
-		}
-	}
 }
 
 [HarmonyPatch(typeof(NMerchantButton), "_Ready")]
@@ -145,10 +44,6 @@ public static class MerchantButtonPatch
 	public static bool Prefix(NMerchantButton __instance)
 	{
 		if (__instance == null)
-			return true;
-
-		string? spinePath = GetButtonSpinePath(__instance);
-		if (spinePath == null)
 			return true;
 
 		Node merchantVisual = __instance.GetNodeOrNull("%MerchantVisual");
@@ -164,28 +59,7 @@ public static class MerchantButtonPatch
 			mv2.Scale = GetMerchantVisualScale(__instance);
 		}
 
-		MegaSkeletonDataResource? skeleton = MerchantSpineLoader.Load(spinePath);
-		if (!SkeletonAssigner.TryAssign(merchantVisual, spinePath, skeleton))
-		{
-			GD.PrintErr($"[Merchant2CuteII] Failed to assign skeleton for {spinePath}");
-		}
-
 		return true;
-	}
-
-	private static string? GetButtonSpinePath(NMerchantButton button)
-	{
-		if (MerchantContextResolver.IsRealMerchantButton(button))
-		{
-			return ModConfig.Paths.MerchantBodySpine;
-		}
-
-		if (MerchantContextResolver.IsFakeMerchantButton(button))
-		{
-			return ModConfig.Paths.FakeMerchantBodySpine;
-		}
-
-		return null;
 	}
 
 	private static Vector2 GetMerchantVisualPositionOffset(NMerchantButton button)
@@ -203,155 +77,28 @@ public static class MerchantButtonPatch
 	}
 }
 
-[HarmonyPatch(typeof(NMerchantHand), "_Ready")]
-public static class MerchantHandPatch
-{
-	[HarmonyPrefix]
-	public static void Prefix(NMerchantHand __instance)
-	{
-		if (__instance == null)
-			return;
+// !已弃用
+// [HarmonyPatch(typeof(NMerchantHand), "PointAtTarget")]
+// public static class MerchantHandPointAtTargetPatch
+// {
+// 	[HarmonyPrefix]
+// 	public static void Prefix(NMerchantHand __instance, Control target, ref Vector2 offset)
+// 	{
+// 		if (__instance == null || (!MerchantContextResolver.IsRealMerchantHand(__instance) && !MerchantContextResolver.IsFakeMerchantHand(__instance)))
+// 		{
+// 			return;
+// 		}
 
-		string? spinePath = GetHandSpinePath(__instance);
-		if (spinePath == null)
-			return;
+// 		offset += GetPointAtTargetOffset(__instance);
+// 	}
 
-		if (__instance.GetParent() is Node2D merchantHandParent)
-		{
-			MegaSkeletonDataResource? merchantHandSkeleton = MerchantSpineLoader.Load(spinePath);
-			Resource? raw = MerchantSpineLoader.GetRaw(spinePath);
-
-			if (merchantHandSkeleton == null && raw == null)
-			{
-				GD.PrintErr($"[Merchant2CuteII] Cannot load hand model: {spinePath}");
-			}
-			else
-			{
-				// schedule replacement (we pass path and skeleton; helper will prefer raw)
-				TaskHelper.RunSafely(ApplyHandReplacementAsync(__instance, merchantHandParent, spinePath, merchantHandSkeleton));
-			}
-
-			merchantHandParent.Scale = GetMerchantHandScale(__instance);
-		}
-	}
-
-	private static string? GetHandSpinePath(NMerchantHand hand)
-	{
-		if (MerchantContextResolver.IsRealMerchantHand(hand))
-		{
-			return ModConfig.Paths.MerchantHandSpine;
-		}
-
-		if (MerchantContextResolver.IsFakeMerchantHand(hand))
-		{
-			return ModConfig.Paths.FakeMerchantHandSpine;
-		}
-
-		return null;
-	}
-
-	private static Vector2 GetMerchantHandScale(NMerchantHand hand)
-	{
-		return MerchantContextResolver.IsFakeMerchantHand(hand)
-			? ModConfig.FakeMerchant.HandScale
-			: ModConfig.Merchant.HandScale;
-	}
-
-	private static async System.Threading.Tasks.Task ApplyHandReplacementAsync(NMerchantHand hand, Node2D merchantHandParent, string handPath, MegaSkeletonDataResource? merchantHandSkeleton)
-	{
-		await merchantHandParent.ToSignal(merchantHandParent.GetTree(), SceneTree.SignalName.ProcessFrame);
-
-		if (!GodotObject.IsInstanceValid(merchantHandParent) || merchantHandParent.GetParent() == null)
-		{
-			return;
-		}
-		// 尝试一次性赋值（优先 raw，然后绑定）
-		bool ok = SkeletonAssigner.TryAssign(merchantHandParent, handPath, merchantHandSkeleton);
-		if (!ok)
-		{
-			GD.PrintErr($"[Merchant2CuteII] Failed to apply hand skeleton for {handPath}");
-			merchantHandParent.Scale = GetMerchantHandScale(hand);
-			return;
-		}
-
-		// 等待少量帧以便 spine native 侧初始化，避免在随后的帧中产生大量 "Native Spine object not set." 日志
-		for (int i = 0; i < 8; i++)
-		{
-			await merchantHandParent.ToSignal(merchantHandParent.GetTree(), SceneTree.SignalName.ProcessFrame);
-		}
-
-		merchantHandParent.Scale = GetMerchantHandScale(hand);
-
-		// 替换后重绑 NMerchantHand 内部字段，避免 _Process 持有旧骨骼引用并恢复手部正常逻辑
-		if (GodotObject.IsInstanceValid(hand))
-		{
-			TryRebindHandInternals(hand, merchantHandParent);
-			ApplyVariantAnimation(merchantHandParent);
-		}
-	}
-
-	private static void TryRebindHandInternals(NMerchantHand hand, Node2D merchantHandParent)
-	{
-		try
-		{
-			MegaSprite newAnimController = new MegaSprite(merchantHandParent);
-			MegaBone? newBone = newAnimController.GetSkeleton()?.FindBone("rotate_me");
-
-			var animField = AccessTools.Field(typeof(NMerchantHand), "_animController");
-			var boneField = AccessTools.Field(typeof(NMerchantHand), "_bone");
-
-			animField?.SetValue(hand, newAnimController);
-			boneField?.SetValue(hand, newBone);
-
-			ApplyVariantAnimation(merchantHandParent);
-		}
-		catch (System.Exception ex)
-		{
-			GD.PrintErr($"[Merchant2CuteII] Hand internals rebind failed: {ex.Message}");
-		}
-	}
-
-	private static void ApplyVariantAnimation(Node2D merchantHandParent)
-	{
-		try
-		{
-			MegaSprite ms = new MegaSprite(merchantHandParent);
-			string variant = ModConfig.Options.HandVariant;
-			string animationName = variant == "hand" ? "default" : variant;
-			if (ms.HasAnimation(animationName))
-			{
-				ms.GetAnimationState().SetAnimation(animationName);
-			}
-			else if (ms.HasAnimation("default"))
-			{
-				ms.GetAnimationState().SetAnimation("default");
-			}
-		}
-		catch { }
-	}
-}
-
-[HarmonyPatch(typeof(NMerchantHand), "PointAtTarget")]
-public static class MerchantHandPointAtTargetPatch
-{
-	[HarmonyPrefix]
-	public static void Prefix(NMerchantHand __instance, Control target, ref Vector2 offset)
-	{
-		if (__instance == null || (!MerchantContextResolver.IsRealMerchantHand(__instance) && !MerchantContextResolver.IsFakeMerchantHand(__instance)))
-		{
-			return;
-		}
-
-		offset += GetPointAtTargetOffset(__instance);
-	}
-
-	private static Vector2 GetPointAtTargetOffset(NMerchantHand hand)
-	{
-		return MerchantContextResolver.IsFakeMerchantHand(hand)
-			? ModConfig.FakeMerchant.PointAtTargetOffset
-			: ModConfig.Merchant.PointAtTargetOffset;
-	}
-}
+// 	private static Vector2 GetPointAtTargetOffset(NMerchantHand hand)
+// 	{
+// 		return MerchantContextResolver.IsFakeMerchantHand(hand)
+// 		? ModConfig.FakeMerchant.PointAtTargetOffset
+// 		: ModConfig.Merchant.PointAtTargetOffset;
+// 	}
+// }
 
 [HarmonyPatch(typeof(NMerchantRoom), "FoulPotionThrown")]
 public static class MerchantRoomFoulPotionPatch
@@ -390,39 +137,83 @@ public static class MerchantRoomFoulPotionPatch
 	}
 }
 
-[HarmonyPatch(typeof(NCreatureVisuals), "_Ready")]
-public static class FakeMerchantMonsterPatch
+[HarmonyPatch(typeof(NMerchantCharacter), "PlayAnimation")]
+public static class MerchantCharacterPlayAnimationPatch
 {
 	[HarmonyPrefix]
-	public static void Prefix(NCreatureVisuals __instance)
+	public static bool Prefix(NMerchantCharacter __instance, string anim, bool loop)
+	{
+		if (__instance == null)
+		{
+			return false;
+		}
+
+		try
+		{
+			Node? spineNode = TryGetMerchantSpineNode(__instance);
+			if (spineNode == null)
+			{
+				GD.PrintErr("[Merchant2CuteII] Cannot find a compatible merchant spine node.");
+				return false;
+			}
+
+			MegaSprite megaSprite = new MegaSprite(spineNode);
+			MegaTrackEntry? megaTrackEntry = megaSprite.GetAnimationState().SetAnimation(anim, loop);
+			if (loop && megaTrackEntry != null)
+			{
+				megaTrackEntry.SetTrackTime(megaTrackEntry.GetAnimationEnd() * Rng.Chaotic.NextFloat());
+			}
+
+			return false;
+		}
+		catch (System.Exception ex)
+		{
+			GD.PrintErr($"[Merchant2CuteII] Safe merchant animation failed: {ex.Message}");
+			return false;
+		}
+	}
+
+	private static Node? TryGetMerchantSpineNode(NMerchantCharacter merchantCharacter)
+	{
+		foreach (Node child in merchantCharacter.GetChildren())
+		{
+			try
+			{
+				_ = new MegaSprite(child);
+				return child;
+			}
+			catch
+			{
+			}
+		}
+
+		if (merchantCharacter.GetChildCount() > 0)
+		{
+			return merchantCharacter.GetChild(0);
+		}
+
+		return null;
+	}
+}
+
+[HarmonyPatch(typeof(NMerchantHand), "_Ready")]
+public static class MerchantHandReadyPatch
+{
+	[HarmonyPostfix]
+	public static void Postfix(NMerchantHand __instance)
 	{
 		if (__instance == null)
 		{
 			return;
 		}
 
-		if (__instance.Name.ToString() != "FakeMerchantMonster")
+		try
 		{
-			return;
+			AnimationHelper.TryApplyVariantToHandNode(__instance);
 		}
-
-		Node2D? visuals = __instance.GetNodeOrNull<Node2D>("%Visuals");
-		if (visuals == null)
+		catch (System.Exception ex)
 		{
-			GD.PrintErr("[Merchant2CuteII] Cannot find %Visuals in FakeMerchantMonster");
-			return;
-		}
-
-		MegaSkeletonDataResource? skeleton = MerchantSpineLoader.Load(ModConfig.Paths.FakeMerchantBodySpine);
-		if (skeleton == null && MerchantSpineLoader.GetRaw(ModConfig.Paths.FakeMerchantBodySpine) == null)
-		{
-			GD.PrintErr($"[Merchant2CuteII] Cannot load fake merchant battle model: {ModConfig.Paths.FakeMerchantBodySpine}");
-			return;
-		}
-
-		if (!SkeletonAssigner.TryAssign(visuals, ModConfig.Paths.FakeMerchantBodySpine, skeleton))
-		{
-			GD.PrintErr("[Merchant2CuteII] Failed to assign fake merchant battle model");
+			GD.PrintErr($"[Merchant2CuteII] Error applying merchant hand variant on ready: {ex.Message}");
 		}
 	}
 }
@@ -456,17 +247,16 @@ public static class MerchantInventoryLegPatch
 			return;
 		}
 
-		Texture2D? texture = GD.Load<Texture2D>(ModConfig.Paths.MerchantLegTexture)
-			?? GD.Load<Texture2D>(ModConfig.Paths.MerchantLegTexture);
+		Texture2D? texture = GD.Load<Texture2D>(ModConfig.Paths.MerchantLegTexture);
 		if (texture == null)
 		{
-			GD.PrintErr($"[Merchant2CuteII] Cannot load merchant leg texture: {ModConfig.Paths.MerchantLegTexture} or {ModConfig.Paths.MerchantLegTexture}");
+			GD.PrintErr($"[Merchant2CuteII] Cannot load merchant leg texture: {ModConfig.Paths.MerchantLegTexture}");
 			return;
 		}
 
 		Vector2 legPosition = new Vector2(
-			slotsContainer.Position.X + ModConfig.Merchant.LegPosition.X,
-			slotsContainer.Position.Y + ModConfig.Merchant.LegPosition.Y
+		slotsContainer.Position.X + ModConfig.Merchant.LegPosition.X,
+		slotsContainer.Position.Y + ModConfig.Merchant.LegPosition.Y
 		);
 
 		TextureRect decoration = new TextureRect
@@ -478,7 +268,6 @@ public static class MerchantInventoryLegPatch
 			Scale = ModConfig.Merchant.LegScale,
 			MouseFilter = Control.MouseFilterEnum.Ignore,
 			Visible = !ModConfig.Options.UseFoot,
-			// ZAsRelative = false,
 			ZIndex = 0,
 			ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
 			StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
@@ -526,105 +315,14 @@ internal static class MerchantInventoryLegMotion
 		}
 
 		Vector2 targetPosition = new Vector2(
-			slotsContainer.Position.X + ModConfig.Merchant.LegPosition.X,
-			slotsTargetY + ModConfig.Merchant.LegPosition.Y
+		slotsContainer.Position.X + ModConfig.Merchant.LegPosition.X,
+		slotsTargetY + ModConfig.Merchant.LegPosition.Y
 		);
 
 		Tween tween = inventory.CreateTween();
 		tween.TweenProperty(leg, "position", targetPosition, duration)
-			.SetEase(ease)
-			.SetTrans(transition)
-			.FromCurrent();
-	}
-}
-
-internal static class SkeletonAssigner
-{
-	// 尝试将 skeleton 资源安全地赋给目标节点：优先 raw，否则使用 MegaSprite 绑定；返回是否成功
-	public static bool TryAssign(Node target, string? path, MegaSkeletonDataResource? skeleton)
-	{
-		if (target == null)
-			return false;
-
-		// prefer to operate on the actual Spine node if one exists under the given target
-		Node assignTarget = FindSpineNode(target) ?? target;
-
-		Resource? raw = null;
-		if (!string.IsNullOrEmpty(path))
-		{
-			raw = MerchantSpineLoader.GetRaw(path);
-		}
-
-		if (raw != null)
-		{
-			try
-			{
-				assignTarget.Set("skeleton_data_res", raw);
-				return true;
-			}
-			catch
-			{
-				// fallthrough to binding
-			}
-		}
-
-		if (skeleton != null)
-		{
-			try
-			{
-				MegaSprite ms = new MegaSprite(assignTarget);
-				ms.SetSkeletonDataRes(skeleton);
-				return true;
-			}
-			catch
-			{
-				// failed to bind
-			}
-		}
-
-		return false;
-	}
-
-	private static Node? FindSpineNode(Node root)
-	{
-		if (root == null)
-			return null;
-
-		// check self
-		try
-		{
-			string cls = root.GetClass().ToString().ToLowerInvariant();
-			if (cls.Contains("spine") || root.Name.ToString().ToLowerInvariant().Contains("spine") || root.HasMethod("set_skeleton_data_res"))
-				return root;
-		}
-		catch { }
-
-		// BFS up to depth 3
-		var q = new Queue<Node>();
-		q.Enqueue(root);
-		int depth = 0;
-		while (q.Count > 0 && depth < 3)
-		{
-			int n = q.Count;
-			for (int i = 0; i < n; i++)
-			{
-				var node = q.Dequeue();
-				foreach (Node child in node.GetChildren())
-				{
-					try
-					{
-						string cls = child.GetClass().ToString().ToLowerInvariant();
-						if (cls.Contains("spine") || child.Name.ToString().ToLowerInvariant().Contains("spine") || child.HasMethod("set_skeleton_data_res"))
-							return child;
-					}
-					catch { }
-
-					q.Enqueue(child);
-				}
-			}
-			depth++;
-		}
-
-		return null;
+		.SetEase(ease)
+		.SetTrans(transition)
+		.FromCurrent();
 	}
 }

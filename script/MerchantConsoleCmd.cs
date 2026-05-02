@@ -1,9 +1,10 @@
 using System;
 using Godot;
-using MegaCrit.Sts2.Core.Bindings.MegaSpine;
 using MegaCrit.Sts2.Core.DevConsole;
 using MegaCrit.Sts2.Core.DevConsole.ConsoleCommands;
 using MegaCrit.Sts2.Core.Entities.Players;
+using MegaCrit.Sts2.Core.Helpers;
+using MegaCrit.Sts2.Core.Nodes.Screens.Shops;
 
 namespace MegaCrit.Sts2.Core.DevConsole.ConsoleCommands;
 
@@ -76,6 +77,7 @@ public class MerchantConsoleCmd : AbstractConsoleCmd
 		}
 
 		int updatedCount = ApplyToExistingHands();
+		TaskHelper.RunSafely(ApplyToExistingHandsNextFrame());
 		try
 		{
 			bool showLeg = !Merchant2CuteII.script.ModConfig.Options.UseFoot;
@@ -100,6 +102,17 @@ public class MerchantConsoleCmd : AbstractConsoleCmd
 		return updated;
 	}
 
+	private static async System.Threading.Tasks.Task ApplyToExistingHandsNextFrame()
+	{
+		SceneTree? tree = Engine.GetMainLoop() as SceneTree;
+		if (tree == null || tree.Root == null)
+			return;
+
+		await tree.ToSignal(tree, SceneTree.SignalName.ProcessFrame);
+		ApplyToExistingHands();
+		UpdateLegVisibility(!Merchant2CuteII.script.ModConfig.Options.UseFoot);
+	}
+
 	private static void FindAndApplyRecursive(Node root, ref int updated)
 	{
 		if (root == null)
@@ -109,9 +122,9 @@ public class MerchantConsoleCmd : AbstractConsoleCmd
 		{
 			try
 			{
-				if (child.GetClass().ToString() == "NMerchantHand")
+				if (child is NMerchantHand merchantHand)
 				{
-					if (TryApplyToHand(child))
+					if (TryApplyToHand(merchantHand))
 					{
 						updated++;
 					}
@@ -123,32 +136,18 @@ public class MerchantConsoleCmd : AbstractConsoleCmd
 		}
 	}
 
-	private static bool TryApplyToHand(Node hand)
+	private static bool TryApplyToHand(NMerchantHand hand)
 	{
-		Node? parent = hand.GetParent();
-		if (parent == null)
-			return false;
-
 		try
 		{
-			MegaSprite ms = new MegaSprite(parent);
-			string variant = Merchant2CuteII.script.ModConfig.Options.HandVariant;
-			string animationName = variant == "hand" ? "default" : variant;
-			if (ms.HasAnimation(animationName))
-			{
-				ms.GetAnimationState().SetAnimation(animationName);
-			}
-			else if (ms.HasAnimation("default"))
-			{
-				ms.GetAnimationState().SetAnimation("default");
-			}
+			return Merchant2CuteII.script.AnimationHelper.TryApplyVariantToHandNode(hand);
 		}
 		catch (Exception ex)
 		{
-			GD.PrintErr($"[Merchant2CuteII] Set animation failed: {ex.Message}");
+			GD.PrintErr($"[Merchant2CuteII] AnimationHelper failed: {ex.Message}");
 		}
 
-		return true;
+		return false;
 	}
 
 

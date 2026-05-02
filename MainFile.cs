@@ -15,11 +15,10 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-
-// ?Merchant2CuteII - A Slay the Spire 2 Mod
 using Godot;
 using HarmonyLib;
 using MegaCrit.Sts2.Core.Modding;
+using MegaCrit.Sts2.Core.Helpers;
 
 namespace Merchant2CuteII;
 
@@ -33,18 +32,15 @@ public static class Merchant2CuteIIMod
 		Harmony harmony = new Harmony(ModName);
 		harmony.PatchAll();
 
-		// Preload merchant spine resources to avoid hitch when swapping at runtime.
 		try
 		{
-			// safe if paths missing - MerchantSpineLoader.Preload will handle nulls/errors
-			script.MerchantSpineLoader.Preload(script.ModConfig.Paths.MerchantBodySpine);
-			script.MerchantSpineLoader.Preload(script.ModConfig.Paths.MerchantHandSpine);
-			script.MerchantSpineLoader.Preload(script.ModConfig.Paths.FakeMerchantBodySpine);
-			script.MerchantSpineLoader.Preload(script.ModConfig.Paths.FakeMerchantHandSpine);
+			script.ResourcePreloader.PreloadAll();
+			// Run heavy spine preloads asynchronously to avoid blocking startup
+			TaskHelper.RunSafely(script.ResourcePreloader.PreloadSpinePathsAsync(script.ModConfig.Paths.SpinePaths));
 		}
 		catch (System.Exception ex)
 		{
-			GD.PrintErr($"[Merchant2CuteII] Preload call failed: {ex.Message}");
+			GD.PrintErr($"[Merchant2CuteII] Resource preloading failed: {ex.Message}");
 		}
 
 		GD.Print("[Merchant2CuteII] Mod initialized");

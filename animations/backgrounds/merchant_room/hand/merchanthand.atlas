@@ -1,0 +1,27 @@
+
+merchanthand.png
+size: 2212,816
+format: RGBA8888
+filter: Linear,Linear
+repeat: none
+arm
+  rotate: true
+  xy: 2, 22
+  size: 313, 1117
+  orig: 410, 1229
+  offset: 77, 21
+  index: -1
+foot
+  rotate: true
+  xy: 2, 337
+  size: 474, 1790
+  orig: 819, 2458
+  offset: 233, 359
+  index: -1
+shadow
+  rotate: true
+  xy: 1121, 2
+  size: 333, 1089
+  orig: 410, 1229
+  offset: 75, 0
+  index: -1

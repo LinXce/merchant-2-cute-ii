@@ -1,5 +1,6 @@
 using Godot;
 using HarmonyLib;
+using System.Runtime.CompilerServices;
 using MegaCrit.Sts2.Core.Bindings.MegaSpine;
 using MegaCrit.Sts2.Core.Helpers;
 using MegaCrit.Sts2.Core.Nodes.Combat;
@@ -290,6 +291,11 @@ public static class MerchantHandPatch
 		}
 	}
 
+	internal static void RebindHandInternalsForVariantSwitch(NMerchantHand hand, Node2D merchantHandParent)
+	{
+		TryRebindHandInternals(hand, merchantHandParent);
+	}
+
 	private static void TryRebindHandInternals(NMerchantHand hand, Node2D merchantHandParent)
 	{
 		try
@@ -335,14 +341,14 @@ public static class MerchantHandPatch
 public static class MerchantHandPointAtTargetPatch
 {
 	[HarmonyPrefix]
-	public static void Prefix(NMerchantHand __instance, Control target, ref Vector2 offset)
+	public static void Prefix(NMerchantHand __instance, ref Vector2 pos)
 	{
 		if (__instance == null || (!MerchantContextResolver.IsRealMerchantHand(__instance) && !MerchantContextResolver.IsFakeMerchantHand(__instance)))
 		{
 			return;
 		}
 
-		offset += GetPointAtTargetOffset(__instance);
+		pos += GetPointAtTargetOffset(__instance);
 	}
 
 	private static Vector2 GetPointAtTargetOffset(NMerchantHand hand)
@@ -350,6 +356,127 @@ public static class MerchantHandPointAtTargetPatch
 		return MerchantContextResolver.IsFakeMerchantHand(hand)
 			? ModConfig.FakeMerchant.PointAtTargetOffset
 			: ModConfig.Merchant.PointAtTargetOffset;
+	}
+}
+
+[HarmonyPatch(typeof(NMerchantHand), "_Process")]
+public static class MerchantHandProcessPatch
+{
+	private static readonly System.Reflection.FieldInfo? StartPosField = AccessTools.Field(typeof(NMerchantHand), "_startPos");
+	private static readonly System.Reflection.FieldInfo? TargetPosField = AccessTools.Field(typeof(NMerchantHand), "_targetPos");
+	private static readonly System.Reflection.FieldInfo? BoneField = AccessTools.Field(typeof(NMerchantHand), "_bone");
+	private static readonly System.Reflection.FieldInfo? NoiseField = AccessTools.Field(typeof(NMerchantHand), "_noise");
+	private static readonly System.Reflection.FieldInfo? TimeField = AccessTools.Field(typeof(NMerchantHand), "_time");
+	private static readonly System.Reflection.FieldInfo? RugField = AccessTools.Field(typeof(NMerchantHand), "_rug");
+	private static readonly System.Reflection.FieldInfo? ParentField = AccessTools.Field(typeof(NMerchantHand), "_parent");
+	private static readonly System.Reflection.FieldInfo? AnimControllerField = AccessTools.Field(typeof(NMerchantHand), "_animController");
+	private static readonly ConditionalWeakTable<NMerchantHand, SafeBoneState> BoneStates = new();
+
+	[HarmonyPrefix]
+	public static bool Prefix(NMerchantHand __instance, double delta)
+	{
+		if (__instance == null || (!MerchantContextResolver.IsRealMerchantHand(__instance) && !MerchantContextResolver.IsFakeMerchantHand(__instance)))
+		{
+			return true;
+		}
+
+		try
+		{
+			RunSafeMerchantHandProcess(__instance, delta);
+		}
+		catch (System.Exception ex)
+		{
+			GD.PrintErr($"[Merchant2CuteII] Safe hand process failed: {ex.Message}");
+		}
+
+		return false;
+	}
+
+	private static void RunSafeMerchantHandProcess(NMerchantHand hand, double delta)
+	{
+		Node2D? parent = ParentField?.GetValue(hand) as Node2D ?? hand.GetParent() as Node2D;
+		Control? rug = RugField?.GetValue(hand) as Control ?? parent?.GetParent() as Control;
+		FastNoiseLite? noise = NoiseField?.GetValue(hand) as FastNoiseLite;
+		if (parent == null || rug == null || noise == null)
+		{
+			return;
+		}
+
+		float time = TimeField?.GetValue(hand) as float? ?? 0f;
+		time += (float)delta;
+		TimeField?.SetValue(hand, time);
+
+		Vector2 targetPos = TargetPosField?.GetValue(hand) as Vector2? ?? StartPosField?.GetValue(hand) as Vector2? ?? parent.GlobalPosition;
+		float noiseX = noise.GetNoise1D(time * 0.1f) + 0.4f;
+		float noiseY = noise.GetNoise1D((time + 0.25f) * 0.1f) - 0.5f;
+		parent.GlobalPosition = parent.GlobalPosition.Lerp(targetPos + new Vector2(noiseX, noiseY) * 100f, (float)delta * 4f);
+
+		float desiredRotation = Mathf.Lerp(-10f, 10f, (parent.Position.X - rug.Size.X * 0.5f - 50f) * 0.01f);
+		TrySetSafeRotateMeRotation(hand, parent, desiredRotation);
+	}
+
+	private static void TrySetSafeRotateMeRotation(NMerchantHand hand, Node2D parent, float desiredRotation)
+	{
+		SafeBoneState state = BoneStates.GetOrCreateValue(hand);
+		if (state.Disabled)
+		{
+			return;
+		}
+
+		if (state.FramesUntilRetry > 0)
+		{
+			state.FramesUntilRetry--;
+			return;
+		}
+
+		MegaBone? bone = state.Bone;
+		if (bone == null)
+		{
+			bone = TryFindRotateMeBone(parent);
+			state.Bone = bone;
+			if (bone == null)
+			{
+				state.FramesUntilRetry = 12;
+				return;
+			}
+		}
+
+		try
+		{
+			bone.SetRotation(desiredRotation);
+			state.Failures = 0;
+		}
+		catch
+		{
+			state.Bone = null;
+			state.Failures++;
+			state.FramesUntilRetry = 12;
+			if (state.Failures >= 3)
+			{
+				state.Disabled = true;
+			}
+		}
+	}
+
+	private static MegaBone? TryFindRotateMeBone(Node2D parent)
+	{
+		try
+		{
+			MegaSprite animController = new MegaSprite(parent);
+			return animController.GetSkeleton()?.FindBone("rotate_me");
+		}
+		catch
+		{
+			return null;
+		}
+	}
+
+	private sealed class SafeBoneState
+	{
+		public MegaBone? Bone;
+		public int FramesUntilRetry;
+		public int Failures;
+		public bool Disabled;
 	}
 }
 

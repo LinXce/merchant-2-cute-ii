@@ -4,6 +4,8 @@ using MegaCrit.Sts2.Core.Bindings.MegaSpine;
 using MegaCrit.Sts2.Core.DevConsole;
 using MegaCrit.Sts2.Core.DevConsole.ConsoleCommands;
 using MegaCrit.Sts2.Core.Entities.Players;
+using MegaCrit.Sts2.Core.Helpers;
+using MegaCrit.Sts2.Core.Nodes.Screens.Shops;
 
 namespace MegaCrit.Sts2.Core.DevConsole.ConsoleCommands;
 
@@ -76,6 +78,7 @@ public class MerchantConsoleCmd : AbstractConsoleCmd
 		}
 
 		int updatedCount = ApplyToExistingHands();
+		TaskHelper.RunSafely(ApplyToExistingHandsNextFrame());
 		try
 		{
 			bool showLeg = !Merchant2CuteII.script.ModConfig.Options.UseFoot;
@@ -100,6 +103,17 @@ public class MerchantConsoleCmd : AbstractConsoleCmd
 		return updated;
 	}
 
+	private static async System.Threading.Tasks.Task ApplyToExistingHandsNextFrame()
+	{
+		SceneTree? tree = Engine.GetMainLoop() as SceneTree;
+		if (tree == null || tree.Root == null)
+			return;
+
+		await tree.Root.ToSignal(tree, SceneTree.SignalName.ProcessFrame);
+		ApplyToExistingHands();
+		UpdateLegVisibility(!Merchant2CuteII.script.ModConfig.Options.UseFoot);
+	}
+
 	private static void FindAndApplyRecursive(Node root, ref int updated)
 	{
 		if (root == null)
@@ -109,9 +123,9 @@ public class MerchantConsoleCmd : AbstractConsoleCmd
 		{
 			try
 			{
-				if (child.GetClass().ToString() == "NMerchantHand")
+				if (child is NMerchantHand merchantHand)
 				{
-					if (TryApplyToHand(child))
+					if (TryApplyToHand(merchantHand))
 					{
 						updated++;
 					}
@@ -123,14 +137,15 @@ public class MerchantConsoleCmd : AbstractConsoleCmd
 		}
 	}
 
-	private static bool TryApplyToHand(Node hand)
+	private static bool TryApplyToHand(NMerchantHand hand)
 	{
-		Node? parent = hand.GetParent();
+		Node2D? parent = hand.GetParent() as Node2D;
 		if (parent == null)
 			return false;
 
 		try
 		{
+			Merchant2CuteII.script.MerchantHandPatch.RebindHandInternalsForVariantSwitch(hand, parent);
 			MegaSprite ms = new MegaSprite(parent);
 			string variant = Merchant2CuteII.script.ModConfig.Options.HandVariant;
 			string animationName = variant == "hand" ? "default" : variant;
@@ -182,4 +197,3 @@ public class MerchantConsoleCmd : AbstractConsoleCmd
 	}
 
 }
-

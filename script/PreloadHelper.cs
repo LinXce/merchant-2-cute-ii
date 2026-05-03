@@ -14,6 +14,53 @@ internal static class ResourcePreloader
 		Preload(ModConfig.Paths.MerchantLegTexture);
 	}
 
+	public static async Task PreloadAudioPathsAsync(IEnumerable<string> paths, int perFrame = 2)
+	{
+		if (paths == null)
+			return;
+
+		SceneTree? tree = Engine.GetMainLoop() as SceneTree;
+		int batch = 0;
+		int loaded = 0;
+		Stopwatch sw = Stopwatch.StartNew();
+
+		foreach (string path in paths)
+		{
+			if (string.IsNullOrEmpty(path) || _cache.ContainsKey(path))
+			{
+				continue;
+			}
+
+			try
+			{
+				Resource? resource = ResourceLoader.Load<Resource>(path, null, ResourceLoader.CacheMode.Reuse);
+				_cache[path] = resource;
+				if (resource != null)
+				{
+					loaded++;
+					GD.Print($"[Merchant2CuteII] Preloaded audio resource: {path}");
+				}
+				else
+				{
+					GD.PrintErr($"[Merchant2CuteII] Preload audio: resource not found {path}");
+				}
+			}
+			catch (System.Exception ex)
+			{
+				GD.PrintErr($"[Merchant2CuteII] Preload audio exception for {path}: {ex.Message}");
+			}
+
+			batch++;
+			if (perFrame > 0 && batch >= perFrame && tree != null)
+			{
+				batch = 0;
+				await tree.ToSignal(tree, SceneTree.SignalName.ProcessFrame);
+			}
+		}
+
+		GD.Print($"[Merchant2CuteII] PreloadAudioPathsAsync completed: loaded={loaded} timeMs={sw.ElapsedMilliseconds}");
+	}
+
 	public static void PreloadSpinePaths(IEnumerable<string> paths)
 	{
 		if (paths == null)

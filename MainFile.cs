@@ -35,6 +35,7 @@ public static class Merchant2CuteIIMod
 		try
 		{
 			script.ResourcePreloader.PreloadAll();
+			TaskHelper.RunSafely(script.ResourcePreloader.PreloadAudioPathsAsync(script.ModConfig.Paths.MerchantVoicePaths));
 			// Run heavy spine preloads asynchronously to avoid blocking startup
 			TaskHelper.RunSafely(script.ResourcePreloader.PreloadSpinePathsAsync(script.ModConfig.Paths.SpinePaths));
 		}

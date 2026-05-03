@@ -1,12 +1,17 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using Godot;
 using HarmonyLib;
 using MegaCrit.Sts2.Core.Bindings.MegaSpine;
 using MegaCrit.Sts2.Core.Audio.Debug;
 using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Nodes.Events.Custom;
+using MegaCrit.Sts2.Core.Localization;
+using MegaCrit.Sts2.Core.Nodes;
 using MegaCrit.Sts2.Core.Nodes.Rooms;
+using MegaCrit.Sts2.Core.Rooms;
 using MegaCrit.Sts2.Core.Nodes.Screens.Shops;
+using MegaCrit.Sts2.Core.Nodes.Vfx;
+using MegaCrit.Sts2.Core.Nodes.Vfx.Utilities;
 using MegaCrit.Sts2.Core.Random;
 
 namespace Merchant2CuteII.script;
@@ -109,36 +114,59 @@ public static class MerchantRoomFoulPotionPatch
 	[HarmonyPostfix]
 	public static void Postfix(NMerchantRoom __instance)
 	{
+	}
+
+	[HarmonyPrefix]
+	public static bool Prefix(NMerchantRoom __instance)
+	{
 		try
 		{
 			if (__instance == null)
 			{
-				return;
+				return true;
 			}
+
+			string? voicePath = ModConfig.Voice.GetMerchantVoicePath("merchant_thank_yous");
+			if (!string.IsNullOrEmpty(voicePath))
+				MerchantVoiceSfxPatch.TryPlayVoice(voicePath, 6f);
 
 			Node merchantVisual = __instance.GetNodeOrNull("%MerchantVisual");
 			if (merchantVisual == null)
 			{
 				GD.PrintErr("[Merchant2CuteII] Cannot find %MerchantVisual in MerchantRoom");
-				return;
+				return false;
 			}
 
 			MegaSprite megaSprite = new MegaSprite(merchantVisual);
 			if (!megaSprite.HasAnimation("poison"))
 			{
 				GD.PrintErr("[Merchant2CuteII] Poison animation does not exist on merchant skeleton");
-				return;
+				return false;
 			}
 
 			megaSprite.GetAnimationState().SetAnimation("poison");
 			GD.Print("[Merchant2CuteII] Set merchant animation to poison");
+
+			LocString? locString = Rng.Chaotic.NextItem(MerchantRoom.Dialogue.FoulPotionLines);
+			if (locString != null)
+			{
+				NSpeechBubbleVfx? nSpeechBubbleVfx = __instance.MerchantButton.PlayDialogue(locString);
+				if (nSpeechBubbleVfx != null)
+				{
+					NGame.Instance?.ScreenRumble(ShakeStrength.Medium, ShakeDuration.Short, RumbleStyle.Rumble);
+				}
+			}
+
+			return false;
 		}
 		catch (System.Exception ex)
 		{
 			GD.PrintErr($"[Merchant2CuteII] Error adjusting FoulPotionThrown: {ex.Message}");
+			return true;
 		}
 	}
 }
+
 
 [HarmonyPatch(typeof(SfxCmd), nameof(SfxCmd.Play), new[] { typeof(string), typeof(float) })]
 public static class MerchantVoiceSfxPatch
@@ -154,9 +182,8 @@ public static class MerchantVoiceSfxPatch
 
 		try
 		{
-			if (NDebugAudioManager.Instance != null)
+			if (TryPlayVoice(voicePath, volume + 4f))
 			{
-				NDebugAudioManager.Instance.Play(voicePath, volume + 4f);
 				return false;
 			}
 		}
@@ -165,6 +192,42 @@ public static class MerchantVoiceSfxPatch
 			GD.PrintErr($"[Merchant2CuteII] Merchant voice replacement failed: {ex.Message}");
 		}
 
+		return true;
+	}
+
+	public static bool TryPlayVoice(string voicePath, float volume)
+	{
+		if (NDebugAudioManager.Instance != null)
+		{
+			NDebugAudioManager.Instance.Play(voicePath, volume);
+			return true;
+		}
+
+		AudioStream? stream = ResourceLoader.Load<AudioStream>($"res://debug_audio/{voicePath}");
+		if (stream == null)
+		{
+			GD.PrintErr($"[Merchant2CuteII] Merchant voice stream not found: res://debug_audio/{voicePath}");
+			return false;
+		}
+
+		SceneTree? tree = Engine.GetMainLoop() as SceneTree;
+		if (tree?.Root == null)
+		{
+			GD.PrintErr("[Merchant2CuteII] Merchant voice fallback failed: SceneTree root is null");
+			return false;
+		}
+
+		AudioStreamPlayer player = new AudioStreamPlayer
+		{
+			Stream = stream,
+			VolumeLinear = volume,
+			Bus = "SFX",
+			Name = "MerchantVoiceFallbackPlayer"
+		};
+
+		tree.Root.AddChild(player);
+		player.Finished += player.QueueFree;
+		player.Play();
 		return true;
 	}
 }

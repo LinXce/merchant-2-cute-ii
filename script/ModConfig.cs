@@ -7,7 +7,16 @@ public static class ModConfig
 	public static class Paths
 	{
 		public static string MerchantLegTexture => "res://animations/customs/merchant/leg.png";
-		// kept for backward-compat; use GetMerchantVoicePath in ModConfig to resolve by variant
+		public static string[] MerchantVoicePaths => new[]
+		{
+			"res://debug_audio/jp/welcome.mp3",
+			"res://debug_audio/jp/thanks.mp3",
+			"res://debug_audio/jp/disapointment.mp3",
+			"res://debug_audio/zh/welcome1.wav",
+			"res://debug_audio/zh/welcome2.wav",
+			"res://debug_audio/zh/thanks.wav",
+			"res://debug_audio/zh/disappointment.wav",
+		};
 
 		public static string[] SpinePaths => new[]
 		{
@@ -60,32 +69,73 @@ public static class ModConfig
 		public static string? GetMerchantVoicePath(string sfxEvent)
 		{
 			string variant = Options.MerchantVoiceVariant;
-			// match the event by substring
-			if (variant == "jp")
+			string[] candidates = variant switch
 			{
-				if (sfxEvent.Contains("merchant_welcome"))
-					return "jp/welcome.mp3";
-				if (sfxEvent.Contains("merchant_thank_yous"))
-					return "jp/thanks.mp3";
-				if (sfxEvent.Contains("merchant_dissapointment") || sfxEvent.Contains("merchant_dissapoint"))
-					return "jp/disapointment.mp3";
-			}
-			else if (variant == "zh")
+				"jp" => GetJpCandidates(sfxEvent),
+				"zh" => GetZhCandidates(sfxEvent),
+				_ => System.Array.Empty<string>()
+			};
+
+			foreach (string candidate in candidates)
 			{
-				if (sfxEvent.Contains("merchant_welcome"))
+				if (Godot.ResourceLoader.Exists($"res://debug_audio/{candidate}"))
 				{
-					// choose between two welcome variants to add variety
-					int idx = (int)(System.DateTime.UtcNow.Ticks % 2);
-					return idx == 0 ? "zh/welcome1.wav" : "zh/welcome2.wav";
+					return candidate;
 				}
-				if (sfxEvent.Contains("merchant_thank_yous"))
-					return "zh/thanks.wav";
-				if (sfxEvent.Contains("merchant_dissapointment") || sfxEvent.Contains("merchant_dissapoint"))
-					return "zh/disappointment.wav";
+			}
+
+			if (candidates.Length > 0)
+			{
+				// fall back to the first candidate so missing files are visible in logs
+				return candidates[0];
 			}
 
 			// default: no replacement
 			return null;
+		}
+
+		private static string[] GetJpCandidates(string sfxEvent)
+		{
+			if (sfxEvent.Contains("merchant_welcome"))
+			{
+				return new[] { "jp/welcome.mp3" };
+			}
+
+			if (sfxEvent.Contains("merchant_thank_yous") || sfxEvent.Contains("merchant_passive"))
+			{
+				return new[] { "jp/thanks.mp3" };
+			}
+
+			if (sfxEvent.Contains("merchant_dissapointment") || sfxEvent.Contains("merchant_dissapoint"))
+			{
+				return new[] { "jp/disapointment.mp3" };
+			}
+
+			return System.Array.Empty<string>();
+		}
+
+		private static string[] GetZhCandidates(string sfxEvent)
+		{
+			if (sfxEvent.Contains("merchant_welcome"))
+			{
+				// int idx = (int)(System.DateTime.UtcNow.Ticks % 2);
+				// return idx == 0
+				// 	? new[] { "zh/welcome1.wav" }
+				// 	: new[] { "zh/welcome2.wav" };
+				return new[] { "zh/welcome1.wav" };
+			}
+
+			if (sfxEvent.Contains("merchant_thank_yous") || sfxEvent.Contains("merchant_passive"))
+			{
+				return new[] { "zh/thanks.wav" };
+			}
+
+			if (sfxEvent.Contains("merchant_dissapointment") || sfxEvent.Contains("merchant_dissapoint"))
+			{
+				return new[] { "zh/disappointment.wav" };
+			}
+
+			return System.Array.Empty<string>();
 		}
 	}
 

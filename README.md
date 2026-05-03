@@ -7,6 +7,13 @@
 1. 下载 [Releases] 的Merchant2CuteII压缩包 解压到杀戮尖塔2游戏目录下的mods文件夹。
 2. 如果没有mods文件夹可以手动创建。
 
+### v1.3.0-260503
+
+更新配音
+命令行:
+merchant voice default|zh|jp
+切换原版、中文、日语配音
+
 ### v1.2.0-260501
 
 更新hand-foot切换。

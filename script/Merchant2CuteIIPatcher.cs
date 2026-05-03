@@ -1,6 +1,9 @@
-﻿using Godot;
+﻿using System.Collections.Generic;
+using Godot;
 using HarmonyLib;
 using MegaCrit.Sts2.Core.Bindings.MegaSpine;
+using MegaCrit.Sts2.Core.Audio.Debug;
+using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Nodes.Events.Custom;
 using MegaCrit.Sts2.Core.Nodes.Rooms;
 using MegaCrit.Sts2.Core.Nodes.Screens.Shops;
@@ -134,6 +137,35 @@ public static class MerchantRoomFoulPotionPatch
 		{
 			GD.PrintErr($"[Merchant2CuteII] Error adjusting FoulPotionThrown: {ex.Message}");
 		}
+	}
+}
+
+[HarmonyPatch(typeof(SfxCmd), nameof(SfxCmd.Play), new[] { typeof(string), typeof(float) })]
+public static class MerchantVoiceSfxPatch
+{
+	[HarmonyPrefix]
+	public static bool Prefix(string sfx, float volume)
+	{
+		string? voicePath = ModConfig.Voice.GetMerchantVoicePath(sfx);
+		if (string.IsNullOrEmpty(voicePath))
+		{
+			return true;
+		}
+
+		try
+		{
+			if (NDebugAudioManager.Instance != null)
+			{
+				NDebugAudioManager.Instance.Play(voicePath, volume + 4f);
+				return false;
+			}
+		}
+		catch (System.Exception ex)
+		{
+			GD.PrintErr($"[Merchant2CuteII] Merchant voice replacement failed: {ex.Message}");
+		}
+
+		return true;
 	}
 }
 

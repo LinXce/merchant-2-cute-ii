@@ -10,6 +10,7 @@ internal static class ResourcePreloader
 
 	public static void PreloadAll()
 	{
+		// preload only essential UI textures; voice assets can be large and are loaded on demand
 		Preload(ModConfig.Paths.MerchantLegTexture);
 	}
 

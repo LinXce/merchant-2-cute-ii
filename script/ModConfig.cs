@@ -7,6 +7,7 @@ public static class ModConfig
 	public static class Paths
 	{
 		public static string MerchantLegTexture => "res://animations/customs/merchant/leg.png";
+		// kept for backward-compat; use GetMerchantVoicePath in ModConfig to resolve by variant
 
 		public static string[] SpinePaths => new[]
 		{
@@ -20,6 +21,7 @@ public static class ModConfig
 	public static class Options
 	{
 		private static string _handVariant = "hand";
+		private static string _merchantVoiceVariant = "default";
 
 		public static string HandVariant
 		{
@@ -29,10 +31,61 @@ public static class ModConfig
 
 		public static bool UseFoot => HandVariant == "foot";
 
+		public static string MerchantVoiceVariant
+		{
+			get => _merchantVoiceVariant;
+			set => _merchantVoiceVariant = NormalizeVoiceVariant(value);
+		}
+
+		public static bool UseMerchantJpVoice => MerchantVoiceVariant == "jp";
+		public static bool UseMerchantZhVoice => MerchantVoiceVariant == "zh";
+
 		private static string NormalizeVariant(string? variant)
 		{
 			string normalized = (variant ?? string.Empty).Trim().ToLowerInvariant();
 			return normalized == "foot" ? "foot" : "hand";
+		}
+
+		private static string NormalizeVoiceVariant(string? variant)
+		{
+			string normalized = (variant ?? string.Empty).Trim().ToLowerInvariant();
+			if (normalized == "jp") return "jp";
+			if (normalized == "zh") return "zh";
+			return "default";
+		}
+	}
+
+	public static class Voice
+	{
+		public static string? GetMerchantVoicePath(string sfxEvent)
+		{
+			string variant = Options.MerchantVoiceVariant;
+			// match the event by substring
+			if (variant == "jp")
+			{
+				if (sfxEvent.Contains("merchant_welcome"))
+					return "jp/welcome.mp3";
+				if (sfxEvent.Contains("merchant_thank_yous"))
+					return "jp/thanks.mp3";
+				if (sfxEvent.Contains("merchant_dissapointment") || sfxEvent.Contains("merchant_dissapoint"))
+					return "jp/disapointment.mp3";
+			}
+			else if (variant == "zh")
+			{
+				if (sfxEvent.Contains("merchant_welcome"))
+				{
+					// choose between two welcome variants to add variety
+					int idx = (int)(System.DateTime.UtcNow.Ticks % 2);
+					return idx == 0 ? "zh/welcome1.wav" : "zh/welcome2.wav";
+				}
+				if (sfxEvent.Contains("merchant_thank_yous"))
+					return "zh/thanks.wav";
+				if (sfxEvent.Contains("merchant_dissapointment") || sfxEvent.Contains("merchant_dissapoint"))
+					return "zh/disappointment.wav";
+			}
+
+			// default: no replacement
+			return null;
 		}
 	}
 

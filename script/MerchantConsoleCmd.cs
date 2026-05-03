@@ -12,28 +12,21 @@ public class MerchantConsoleCmd : AbstractConsoleCmd
 {
 	public override string CmdName => "merchant";
 
-	public override string Args => "<hand|foot|toggle|status>";
+	public override string Args => "<hand|foot|toggle|status|voice>";
 
-	public override string Description => "Switch merchant skeleton variant";
+	public override string Description => "Switch merchant skeleton or voice variant";
 
 	public override bool IsNetworked => false;
 
 	private const string VariantFile = "user://merchant2cute_variant.txt";
+	private const string VoiceFile = "user://merchant2cute_voice.txt";
 
 	static MerchantConsoleCmd()
 	{
 		try
 		{
-			var fa = Godot.FileAccess.Open(VariantFile, Godot.FileAccess.ModeFlags.Read);
-			if (fa != null)
-			{
-				string v = fa.GetLine().Trim().ToLowerInvariant();
-				if (v == "foot" || v == "hand")
-				{
-					Merchant2CuteII.script.ModConfig.Options.HandVariant = v;
-				}
-				fa.Close();
-			}
+			LoadPersistedSetting(VariantFile, v => Merchant2CuteII.script.ModConfig.Options.HandVariant = v, "hand", "foot");
+			LoadPersistedSetting(VoiceFile, v => Merchant2CuteII.script.ModConfig.Options.MerchantVoiceVariant = v, "default", "jp", "zh");
 
 			// apply at startup
 			ApplyToExistingHands();
@@ -48,12 +41,17 @@ public class MerchantConsoleCmd : AbstractConsoleCmd
 
 		if (verb == "status")
 		{
-			return new CmdResult(success: true, msg: $"Merchant variant: {Merchant2CuteII.script.ModConfig.Options.HandVariant}");
+			return new CmdResult(success: true, msg: $"Merchant variant: {Merchant2CuteII.script.ModConfig.Options.HandVariant}, voice: {Merchant2CuteII.script.ModConfig.Options.MerchantVoiceVariant}");
+		}
+
+		if (verb == "voice")
+		{
+			return ProcessVoiceCommand(args);
 		}
 
 		if (verb != "hand" && verb != "foot" && verb != "toggle")
 		{
-			return new CmdResult(success: false, msg: "Usage: merchant hand|foot|toggle|status");
+			return new CmdResult(success: false, msg: "Usage: merchant hand|foot|toggle|status|voice default|jp|toggle|status");
 		}
 
 		string current = Merchant2CuteII.script.ModConfig.Options.HandVariant;
@@ -89,6 +87,50 @@ public class MerchantConsoleCmd : AbstractConsoleCmd
 		}
 
 		return new CmdResult(success: true, msg: $"Set merchant variant to {next}. Updated {updatedCount} node(s).");
+	}
+
+	private static CmdResult ProcessVoiceCommand(string[] args)
+	{
+		string verb = args.Length > 1 ? args[1].ToLowerInvariant() : "status";
+
+		if (verb == "status")
+		{
+			return new CmdResult(success: true, msg: $"Merchant voice: {Merchant2CuteII.script.ModConfig.Options.MerchantVoiceVariant}");
+		}
+
+		if (verb != "default" && verb != "jp" && verb != "zh" && verb != "toggle")
+		{
+			return new CmdResult(success: false, msg: "Usage: merchant voice default|jp|zh|toggle|status");
+		}
+
+		string current = Merchant2CuteII.script.ModConfig.Options.MerchantVoiceVariant;
+		string next;
+		if (verb == "toggle")
+		{
+			// cycle: default -> jp -> zh -> default
+			next = current == "default" ? "jp" : current == "jp" ? "zh" : "default";
+		}
+		else
+		{
+			next = verb;
+		}
+		Merchant2CuteII.script.ModConfig.Options.MerchantVoiceVariant = next;
+
+		try
+		{
+			var fa = Godot.FileAccess.Open(VoiceFile, Godot.FileAccess.ModeFlags.Write);
+			if (fa != null)
+			{
+				fa.StoreLine(next);
+				fa.Close();
+			}
+		}
+		catch (Exception ex)
+		{
+			GD.PrintErr($"[Merchant2CuteII] Failed to save voice variant: {ex.Message}");
+		}
+
+		return new CmdResult(success: true, msg: $"Set merchant voice to {next}.");
 	}
 
 	private static int ApplyToExistingHands()
@@ -177,6 +219,32 @@ public class MerchantConsoleCmd : AbstractConsoleCmd
 			catch { }
 
 			UpdateLegVisibilityStatic(child, show);
+		}
+	}
+
+	private static void LoadPersistedSetting(string filePath, Action<string> setter, params string[] allowedValues)
+	{
+		var fa = Godot.FileAccess.Open(filePath, Godot.FileAccess.ModeFlags.Read);
+		if (fa == null)
+		{
+			return;
+		}
+
+		try
+		{
+			string value = fa.GetLine().Trim().ToLowerInvariant();
+			foreach (string allowed in allowedValues)
+			{
+				if (value == allowed)
+				{
+					setter(value);
+					break;
+				}
+			}
+		}
+		finally
+		{
+			fa.Close();
 		}
 	}
 

@@ -32,6 +32,9 @@ public static class ModConfig
         private static string _handVariant = "hand";
         private static string _merchantVoiceVariant = "default";
 
+        private static float _extraDb = 4f;
+        private static string _foulPotionAnimation = "poison";
+
         public static string HandVariant
         {
             get => _handVariant;
@@ -39,6 +42,9 @@ public static class ModConfig
         }
 
         public static bool UseFoot => HandVariant == "foot";
+
+        // Treat white/black as foot-like variants (affects leg visibility)
+        public static bool UseFootLike => HandVariant == "foot" || HandVariant == "white" || HandVariant == "black";
 
         public static string MerchantVoiceVariant
         {
@@ -49,10 +55,25 @@ public static class ModConfig
         public static bool UseMerchantJpVoice => MerchantVoiceVariant == "jp";
         public static bool UseMerchantZhVoice => MerchantVoiceVariant == "zh";
 
+        public static float ExtraDb
+        {
+            get => _extraDb;
+            set => _extraDb = value;
+        }
+
+        public static string FoulPotionAnimation
+        {
+            get => _foulPotionAnimation;
+            set => _foulPotionAnimation = string.IsNullOrEmpty(value) ? "poison" : value;
+        }
+
         private static string NormalizeVariant(string? variant)
         {
             string normalized = (variant ?? string.Empty).Trim().ToLowerInvariant();
-            return normalized == "foot" ? "foot" : "hand";
+            if (normalized == "foot") return "foot";
+            if (normalized == "white") return "white";
+            if (normalized == "black") return "black";
+            return "hand";
         }
 
         private static string NormalizeVoiceVariant(string? variant)

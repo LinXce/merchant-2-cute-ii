@@ -128,7 +128,7 @@ public static class MerchantRoomFoulPotionPatch
 
             string? voicePath = ModConfig.Voice.GetMerchantVoicePath("merchant_thank_yous");
             if (!string.IsNullOrEmpty(voicePath) && ModConfig.Options.MerchantVoiceVariant != "default")
-                MerchantVoiceSfxPatch.TryPlayVoice(voicePath, 4f);
+                MerchantVoiceSfxPatch.TryPlayVoice(voicePath, 1f, ModConfig.Options.ExtraDb);
             else
                 SfxCmd.Play("event:/sfx/npcs/merchant/merchant_thank_yous");
 
@@ -146,7 +146,7 @@ public static class MerchantRoomFoulPotionPatch
                 return false;
             }
 
-            megaSprite.GetAnimationState().SetAnimation("poison");
+            megaSprite.GetAnimationState().SetAnimation(ModConfig.Options.FoulPotionAnimation);
             GD.Print("[Merchant2CuteII] Set merchant animation to poison");
 
             LocString? locString = Rng.Chaotic.NextItem(MerchantRoom.Dialogue.FoulPotionLines);
@@ -184,7 +184,7 @@ public static class MerchantVoiceSfxPatch
 
         try
         {
-            if (TryPlayVoice(voicePath, volume + 4f))
+            if (TryPlayVoice(voicePath, volume, ModConfig.Options.ExtraDb))
             {
                 return false;
             }
@@ -197,11 +197,11 @@ public static class MerchantVoiceSfxPatch
         return true;
     }
 
-    public static bool TryPlayVoice(string voicePath, float volume)
+    public static bool TryPlayVoice(string voicePath, float volume, float extraDb = 0f)
     {
         if (NDebugAudioManager.Instance != null)
         {
-            NDebugAudioManager.Instance.Play(voicePath, volume);
+            NDebugAudioManager.Instance.Play(voicePath, volume + extraDb);
             return true;
         }
 
@@ -222,7 +222,7 @@ public static class MerchantVoiceSfxPatch
         AudioStreamPlayer player = new AudioStreamPlayer
         {
             Stream = stream,
-            VolumeLinear = volume,
+            VolumeLinear = volume + extraDb,
             Bus = "SFX",
             Name = "MerchantVoiceFallbackPlayer"
         };
@@ -364,7 +364,7 @@ public static class MerchantInventoryLegPatch
             RotationDegrees = ModConfig.Merchant.LegRotationDegrees,
             Scale = ModConfig.Merchant.LegScale,
             MouseFilter = Control.MouseFilterEnum.Ignore,
-            Visible = !ModConfig.Options.UseFoot,
+            Visible = !ModConfig.Options.UseFootLike,
             ZIndex = 0,
             ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
             StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,

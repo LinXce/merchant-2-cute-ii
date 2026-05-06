@@ -7,6 +7,28 @@
 1. 下载 [Releases] 的Merchant2CuteII压缩包 解压到杀戮尖塔2游戏目录下的mods文件夹。
 2. 如果没有mods文件夹可以手动创建。
 
+### v1.4.0-260506
+
+命令重置说明：
+
+- merchant point hand|foot|toggle|status
+    - 说明：将原先的 `merchant hand` / `merchant foot` 移至 `point` 子命令下，用于切换商人手/脚。
+    - 说明补充：新增 `white` 与 `black` 两个子选项。
+    - 示例：
+        - `merchant point white` — 切换为 white 变体（脚样式）。
+        - `merchant point black` — 切换为 black 变体（脚样式）。
+    - 参数：hand/foot/
+
+- merchant foul poison|toggle|status
+    - 说明：设置在投掷有害药水（FoulPotionThrown）时使用的动画名称（默认 `poison`）。
+
+- merchant voice default|jp|zh|toggle|status|db <value>
+    - 说明：切换/查询商人语音变体；新增 `db` 子命令用于设置 `ExtraDb`（以 dB 为单位的额外增益，用于替换音频播放时调整音量）。
+    - 示例：`merchant voice db 3.0` 将 `ExtraDb` 设置为 +3.0 dB 并持久化。
+    - 建议：±10.0 dB以内，别伤到耳朵了。
+
+所有设置（point/voice/foul/ExtraDb）将保存到 `user://merchant2cute_config.json`，在启动时自动加载。
+
 ### v1.3.0-260503
 
 更新配音

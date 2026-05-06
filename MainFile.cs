@@ -25,25 +25,26 @@ namespace Merchant2CuteII;
 [ModInitializer("Init")]
 public static class Merchant2CuteIIMod
 {
-	private const string ModName = "Merchant2CuteII";
+    private const string ModName = "Merchant2CuteII";
 
-	public static void Init()
-	{
-		Harmony harmony = new Harmony(ModName);
-		harmony.PatchAll();
+    public static void Init()
+    {
+        Harmony harmony = new Harmony(ModName);
+        harmony.PatchAll();
 
-		try
-		{
-			script.ResourcePreloader.PreloadAll();
-			TaskHelper.RunSafely(script.ResourcePreloader.PreloadAudioPathsAsync(script.ModConfig.Paths.MerchantVoicePaths));
-			// Run heavy spine preloads asynchronously to avoid blocking startup
-			TaskHelper.RunSafely(script.ResourcePreloader.PreloadSpinePathsAsync(script.ModConfig.Paths.SpinePaths));
-		}
-		catch (System.Exception ex)
-		{
-			GD.PrintErr($"[Merchant2CuteII] Resource preloading failed: {ex.Message}");
-		}
+        try
+        {
+            script.ResourcePreloader.PreloadAll();
+            TaskHelper.RunSafely(script.ResourcePreloader.PreloadAudioPathsAsync(script.ModConfig.Paths.MerchantVoicePaths));
+            // Run heavy spine preloads asynchronously to avoid blocking startup
+            TaskHelper.RunSafely(script.ResourcePreloader.PreloadSpinePathsAsync(script.ModConfig.Paths.SpinePaths));
+        }
+        catch (System.Exception ex)
+        {
+            GD.PrintErr($"[Merchant2CuteII] Resource preloading failed: {ex.Message}");
+        }
 
-		GD.Print("[Merchant2CuteII] Mod initialized");
-	}
+        // load unified config
+        Merchant2CuteII.script.ConfigStore.Load();
+    }
 }

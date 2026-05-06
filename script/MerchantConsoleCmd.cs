@@ -12,25 +12,22 @@ public class MerchantConsoleCmd : AbstractConsoleCmd
 {
     public override string CmdName => "merchant";
 
-    public override string Args => "<hand|foot|toggle|status|voice>";
+    public override string Args => "<point|voice|foul|status>";
 
-    public override string Description => "Switch merchant skeleton or voice variant";
+    public override string Description => "Switch merchant skeleton (via point) or voice/foul variant";
 
     public override bool IsNetworked => false;
-
-    private const string VariantFile = "user://merchant2cute_variant.txt";
-    private const string VoiceFile = "user://merchant2cute_voice.txt";
 
     static MerchantConsoleCmd()
     {
         try
         {
-            LoadPersistedSetting(VariantFile, v => Merchant2CuteII.script.ModConfig.Options.HandVariant = v, "hand", "foot");
-            LoadPersistedSetting(VoiceFile, v => Merchant2CuteII.script.ModConfig.Options.MerchantVoiceVariant = v, "default", "jp", "zh");
+            // load unified config
+            Merchant2CuteII.script.ConfigStore.Load();
 
             // apply at startup
             ApplyToExistingHands();
-            UpdateLegVisibility(!Merchant2CuteII.script.ModConfig.Options.UseFoot);
+            UpdateLegVisibility(!Merchant2CuteII.script.ModConfig.Options.UseFootLike);
         }
         catch { }
     }
@@ -41,7 +38,7 @@ public class MerchantConsoleCmd : AbstractConsoleCmd
 
         if (verb == "status")
         {
-            return new CmdResult(success: true, msg: $"Merchant variant: {Merchant2CuteII.script.ModConfig.Options.HandVariant}, voice: {Merchant2CuteII.script.ModConfig.Options.MerchantVoiceVariant}");
+            return new CmdResult(success: true, msg: $"Merchant variant: {Merchant2CuteII.script.ModConfig.Options.HandVariant}, voice: {Merchant2CuteII.script.ModConfig.Options.MerchantVoiceVariant}, foul: {Merchant2CuteII.script.ModConfig.Options.FoulPotionAnimation}");
         }
 
         if (verb == "voice")
@@ -49,9 +46,31 @@ public class MerchantConsoleCmd : AbstractConsoleCmd
             return ProcessVoiceCommand(args);
         }
 
-        if (verb != "hand" && verb != "foot" && verb != "toggle")
+        if (verb == "point")
         {
-            return new CmdResult(success: false, msg: "Usage: merchant hand|foot|toggle|status|voice default|jp|toggle|status");
+            return ProcessPointCommand(args);
+        }
+
+        if (verb == "foul")
+        {
+            return ProcessFoulCommand(args);
+        }
+
+        return new CmdResult(success: false, msg: "Usage: merchant point hand|foot|toggle|status | merchant voice default|jp|zh|toggle|status|db | merchant foul poison|toggle|status");
+    }
+
+    private static CmdResult ProcessPointCommand(string[] args)
+    {
+        string verb = args.Length > 1 ? args[1].ToLowerInvariant() : "status";
+
+        if (verb == "status")
+        {
+            return new CmdResult(success: true, msg: $"Merchant point variant: {Merchant2CuteII.script.ModConfig.Options.HandVariant}");
+        }
+
+        if (verb != "hand" && verb != "foot" && verb != "toggle" && verb != "white" && verb != "black")
+        {
+            return new CmdResult(success: false, msg: "Usage: merchant point hand|foot|white|black|toggle|status");
         }
 
         string current = Merchant2CuteII.script.ModConfig.Options.HandVariant;
@@ -59,26 +78,20 @@ public class MerchantConsoleCmd : AbstractConsoleCmd
 
         Merchant2CuteII.script.ModConfig.Options.HandVariant = next;
 
-        // persist
         try
         {
-            var fa = Godot.FileAccess.Open(VariantFile, Godot.FileAccess.ModeFlags.Write);
-            if (fa != null)
-            {
-                fa.StoreLine(next);
-                fa.Close();
-            }
+            Merchant2CuteII.script.ConfigStore.Save();
         }
         catch (Exception ex)
         {
-            GD.PrintErr($"[Merchant2CuteII] Failed to save variant: {ex.Message}");
+            GD.PrintErr($"[Merchant2CuteII] Failed to save config: {ex.Message}");
         }
 
         int updatedCount = ApplyToExistingHands();
         TaskHelper.RunSafely(ApplyToExistingHandsNextFrame());
         try
         {
-            bool showLeg = !Merchant2CuteII.script.ModConfig.Options.UseFoot;
+            bool showLeg = !Merchant2CuteII.script.ModConfig.Options.UseFootLike;
             UpdateLegVisibility(showLeg);
         }
         catch (Exception ex)
@@ -86,7 +99,42 @@ public class MerchantConsoleCmd : AbstractConsoleCmd
             GD.PrintErr($"[Merchant2CuteII] Error updating leg visibility: {ex.Message}");
         }
 
-        return new CmdResult(success: true, msg: $"Set merchant variant to {next}. Updated {updatedCount} node(s).");
+        return new CmdResult(success: true, msg: $"Set merchant point variant to {next}. Updated {updatedCount} node(s).");
+    }
+
+    private static CmdResult ProcessFoulCommand(string[] args)
+    {
+        string verb = args.Length > 1 ? args[1].ToLowerInvariant() : "status";
+
+        if (verb == "status")
+        {
+            return new CmdResult(success: true, msg: $"Merchant foul animation: {Merchant2CuteII.script.ModConfig.Options.FoulPotionAnimation}");
+        }
+        // 看到这别说哦，nsfw
+        if (verb != "poison" && verb != "nsfw" && verb != "toggle")
+        {
+            return new CmdResult(success: false, msg: "Usage: merchant foul poison|toggle|status");
+        }
+
+        string current = Merchant2CuteII.script.ModConfig.Options.FoulPotionAnimation;
+        string next;
+        if (verb == "toggle")
+            next = current == "poison" ? "nsfw" : "poison";
+        else
+            next = verb;
+
+        Merchant2CuteII.script.ModConfig.Options.FoulPotionAnimation = next;
+
+        try
+        {
+            Merchant2CuteII.script.ConfigStore.Save();
+        }
+        catch (Exception ex)
+        {
+            GD.PrintErr($"[Merchant2CuteII] Failed to save config: {ex.Message}");
+        }
+
+        return new CmdResult(success: true, msg: $"Set merchant foul animation to {next}.");
     }
 
     private static CmdResult ProcessVoiceCommand(string[] args)
@@ -95,12 +143,34 @@ public class MerchantConsoleCmd : AbstractConsoleCmd
 
         if (verb == "status")
         {
-            return new CmdResult(success: true, msg: $"Merchant voice: {Merchant2CuteII.script.ModConfig.Options.MerchantVoiceVariant}");
+            return new CmdResult(success: true, msg: $"Merchant voice: {Merchant2CuteII.script.ModConfig.Options.MerchantVoiceVariant}, extraDb: {Merchant2CuteII.script.ModConfig.Options.ExtraDb}");
+        }
+
+        // set decibel parameter: merchant voice db <value>
+        if (verb == "db")
+        {
+            if (args.Length < 3)
+                return new CmdResult(success: false, msg: "Usage: merchant voice db <value>");
+
+            if (!float.TryParse(args[2], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float parsed))
+                return new CmdResult(success: false, msg: "Invalid db value");
+
+            Merchant2CuteII.script.ModConfig.Options.ExtraDb = parsed;
+            try
+            {
+                Merchant2CuteII.script.ConfigStore.Save();
+            }
+            catch (Exception ex)
+            {
+                GD.PrintErr($"[Merchant2CuteII] Failed to save config: {ex.Message}");
+            }
+
+            return new CmdResult(success: true, msg: $"Set merchant voice extraDb to {parsed} dB.");
         }
 
         if (verb != "default" && verb != "jp" && verb != "zh" && verb != "toggle")
         {
-            return new CmdResult(success: false, msg: "Usage: merchant voice default|jp|zh|toggle|status");
+            return new CmdResult(success: false, msg: "Usage: merchant voice default|jp|zh|toggle|status|db <value>");
         }
 
         string current = Merchant2CuteII.script.ModConfig.Options.MerchantVoiceVariant;
@@ -118,16 +188,11 @@ public class MerchantConsoleCmd : AbstractConsoleCmd
 
         try
         {
-            var fa = Godot.FileAccess.Open(VoiceFile, Godot.FileAccess.ModeFlags.Write);
-            if (fa != null)
-            {
-                fa.StoreLine(next);
-                fa.Close();
-            }
+            Merchant2CuteII.script.ConfigStore.Save();
         }
         catch (Exception ex)
         {
-            GD.PrintErr($"[Merchant2CuteII] Failed to save voice variant: {ex.Message}");
+            GD.PrintErr($"[Merchant2CuteII] Failed to save config: {ex.Message}");
         }
 
         return new CmdResult(success: true, msg: $"Set merchant voice to {next}.");
@@ -152,7 +217,7 @@ public class MerchantConsoleCmd : AbstractConsoleCmd
 
         await tree.ToSignal(tree, SceneTree.SignalName.ProcessFrame);
         ApplyToExistingHands();
-        UpdateLegVisibility(!Merchant2CuteII.script.ModConfig.Options.UseFoot);
+        UpdateLegVisibility(!Merchant2CuteII.script.ModConfig.Options.UseFootLike);
     }
 
     private static void FindAndApplyRecursive(Node root, ref int updated)

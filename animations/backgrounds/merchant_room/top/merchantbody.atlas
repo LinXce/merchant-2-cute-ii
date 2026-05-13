@@ -1,61 +1,41 @@
 
 merchantbody.png
-size: 1896,1252
+size: 1692,1252
 format: RGBA8888
 filter: Linear,Linear
 repeat: none
+heart
+  rotate: true
+  xy: 2, 1218
+  size: 32, 40
+  orig: 57, 57
+  offset: 14, 6
+  index: -1
 idle
   rotate: false
-  xy: 829, 10
-  size: 818, 619
+  xy: 868, 629
+  size: 819, 621
   orig: 859, 819
-  offset: 17, 188
+  offset: 17, 187
   index: -1
 idle_ol
   rotate: false
-  xy: 2, 2
-  size: 822, 623
+  xy: 2, 3
+  size: 825, 625
   orig: 859, 819
-  offset: 17, 188
+  offset: 16, 187
   index: -1
 poison
   rotate: false
-  xy: 829, 631
-  size: 821, 618
+  xy: 44, 630
+  size: 822, 620
   orig: 859, 819
-  offset: 15, 189
+  offset: 15, 187
   index: -1
 poison_ol
   rotate: false
-  xy: 2, 627
-  size: 825, 622
+  xy: 829, 2
+  size: 828, 625
   orig: 859, 819
-  offset: 15, 189
-  index: -1
-shop_merchant_top
-  rotate: false
-  xy: 1652, 47
-  size: 241, 1202
-  orig: 243, 1205
-  offset: 0, 2
-  index: -1
-
-merchantbody2.png
-size: 1248,828
-format: RGBA8888
-filter: Linear,Linear
-repeat: none
-nsfw/nsfw
-  rotate: true
-  xy: 626, 4
-  size: 820, 618
-  orig: 859, 819
-  offset: 16, 189
-  index: -1
-nsfw/nsfw_ol
-  rotate: true
-  xy: 2, 2
-  size: 822, 622
-  orig: 859, 819
-  offset: 16, 189
+  offset: 14, 188
   index: -1

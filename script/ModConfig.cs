@@ -21,7 +21,7 @@ public static class ModConfig
         public static string[] SpinePaths => new[]
         {
             "res://animations/backgrounds/fake_merchant_room/hand/fake_merchant_hand_skel_data.tres",
-            "res://animations/backgrounds/fake_merchant_room/top/fake_merchant_top.tres.tres",
+            "res://animations/backgrounds/fake_merchant_room/top/fake_merchant_top.tres",
             "res://animations/backgrounds/merchant_room/hand/merchant_hand_skel_data.tres",
             "res://animations/backgrounds/merchant_room/top/shop_merchant_top.tres",
         };

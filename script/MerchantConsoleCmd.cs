@@ -59,6 +59,14 @@ public class MerchantConsoleCmd : AbstractConsoleCmd
         return new CmdResult(success: false, msg: "Usage: merchant point hand|foot|toggle|status | merchant voice default|jp|zh|toggle|status|db | merchant foul poison|toggle|status");
     }
 
+    internal static int ApplyPointVariantNow()
+    {
+        int updatedCount = ApplyToExistingHands();
+        TaskHelper.RunSafely(ApplyToExistingHandsNextFrame());
+        UpdateLegVisibility(!Merchant2CuteII.script.ModConfig.Options.UseFootLike);
+        return updatedCount;
+    }
+
     private static CmdResult ProcessPointCommand(string[] args)
     {
         string verb = args.Length > 1 ? args[1].ToLowerInvariant() : "status";
@@ -87,17 +95,7 @@ public class MerchantConsoleCmd : AbstractConsoleCmd
             GD.PrintErr($"[Merchant2CuteII] Failed to save config: {ex.Message}");
         }
 
-        int updatedCount = ApplyToExistingHands();
-        TaskHelper.RunSafely(ApplyToExistingHandsNextFrame());
-        try
-        {
-            bool showLeg = !Merchant2CuteII.script.ModConfig.Options.UseFootLike;
-            UpdateLegVisibility(showLeg);
-        }
-        catch (Exception ex)
-        {
-            GD.PrintErr($"[Merchant2CuteII] Error updating leg visibility: {ex.Message}");
-        }
+        int updatedCount = ApplyPointVariantNow();
 
         return new CmdResult(success: true, msg: $"Set merchant point variant to {next}. Updated {updatedCount} node(s).");
     }

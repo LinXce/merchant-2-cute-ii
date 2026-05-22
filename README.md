@@ -8,6 +8,12 @@
 2. 如果没有mods文件夹可以手动创建。
 3. 如果无法使用命令行修改，在用户数据下找到merchant2cute_config.json修改里面的参数
 
+### v1.5.0-260522
+
+在游戏设置-模组设置中添加了新的切换方式
+<img width="2559" height="1439" alt="f3b9a753-9af8-49c9-8eea-cc4a1a232691" src="https://github.com/user-attachments/assets/bd55063d-4342-4af1-939b-a21ab39ff1c0" />
+
+
 ### v1.4.0-260506
 
 命令重置说明：

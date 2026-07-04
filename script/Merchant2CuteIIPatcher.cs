@@ -248,10 +248,17 @@ public static class MerchantCharacterPlayAnimationPatch
 
             MegaSprite megaSprite = new MegaSprite(spineNode);
             MegaAnimationState animationState = megaSprite.GetAnimationState();
-            animationState.SetAnimation(anim, loop);
+            if (AnimationHelper.ShouldUseLegacyHandSwitching())
+            {
+                animationState.BoundObject.Call("set_animation", anim);
+            }
+            else
+            {
+                animationState.BoundObject.Call("set_animation", anim, loop, 0);
+            }
             if (loop)
             {
-                using MegaTrackEntry? megaTrackEntry = animationState.GetCurrent(0);
+                MegaTrackEntry? megaTrackEntry = animationState.GetCurrent(0);
                 if (megaTrackEntry == null)
                 {
                     return false;

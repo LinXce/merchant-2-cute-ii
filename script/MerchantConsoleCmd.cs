@@ -108,7 +108,7 @@ public class MerchantConsoleCmd : AbstractConsoleCmd
         {
             return new CmdResult(success: true, msg: $"Merchant foul animation: {Merchant2CuteII.script.ModConfig.Options.FoulPotionAnimation}");
         }
-        // 看到这别说哦，nsfw
+        // 看到这别说哦，nsfw 但是我删了
         if (verb != "poison" && verb != "nsfw" && verb != "toggle")
         {
             return new CmdResult(success: false, msg: "Usage: merchant foul poison|toggle|status");

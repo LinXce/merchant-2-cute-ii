@@ -14,6 +14,9 @@ public static class ModdingScreenUiPatch
 
     private const string PointButtonName = "Merchant2CuteII_PointVariant";
     private const string VoiceButtonName = "Merchant2CuteII_VoiceVariant";
+    private const string VoiceVolumeButtonName = "Merchant2CuteII_VoiceVolume";
+
+    private static readonly float[] VoiceVolumePresets = new[] { -12f, -6f, -3f, 0f, 3f, 6f };
 
     [HarmonyPostfix]
     public static void Postfix(NModInfoContainer __instance, Mod mod)
@@ -25,6 +28,7 @@ public static class ModdingScreenUiPatch
 
         var pointBtn = __instance.GetNodeOrNull<Button>(PointButtonName);
         var voiceBtn = __instance.GetNodeOrNull<Button>(VoiceButtonName);
+        var volumeBtn = __instance.GetNodeOrNull<Button>(VoiceVolumeButtonName);
 
         if (!isOurMod)
         {
@@ -32,6 +36,8 @@ public static class ModdingScreenUiPatch
                 pointBtn.Visible = false;
             if (voiceBtn != null)
                 voiceBtn.Visible = false;
+            if (volumeBtn != null)
+                volumeBtn.Visible = false;
             return;
         }
 
@@ -44,7 +50,7 @@ public static class ModdingScreenUiPatch
                 {
                     TogglePointVariant();
                     MerchantConsoleCmd.ApplyPointVariantNow();
-                    RefreshButtonText(pointBtn, voiceBtn);
+                    RefreshButtonText(pointBtn, voiceBtn, volumeBtn);
                 }
                 catch (Exception ex)
                 {
@@ -62,7 +68,7 @@ public static class ModdingScreenUiPatch
                 try
                 {
                     ToggleVoiceVariant();
-                    RefreshButtonText(pointBtn, voiceBtn);
+                    RefreshButtonText(pointBtn, voiceBtn, volumeBtn);
                 }
                 catch (Exception ex)
                 {
@@ -72,11 +78,30 @@ public static class ModdingScreenUiPatch
             __instance.AddChild(voiceBtn);
         }
 
-        RefreshButtonText(pointBtn, voiceBtn);
-        UpdateButtonPositions(__instance, pointBtn, voiceBtn);
+        if (volumeBtn == null)
+        {
+            volumeBtn = CreateButton(VoiceVolumeButtonName);
+            volumeBtn.Pressed += () =>
+            {
+                try
+                {
+                    ToggleVoiceVolume();
+                    RefreshButtonText(pointBtn, voiceBtn, volumeBtn);
+                }
+                catch (Exception ex)
+                {
+                    GD.PrintErr($"[Merchant2CuteII] Failed to toggle voice volume: {ex.Message}");
+                }
+            };
+            __instance.AddChild(volumeBtn);
+        }
+
+        RefreshButtonText(pointBtn, voiceBtn, volumeBtn);
+        UpdateButtonPositions(__instance, pointBtn, voiceBtn, volumeBtn);
 
         pointBtn.Visible = true;
         voiceBtn.Visible = true;
+        volumeBtn.Visible = true;
     }
 
     private static Button CreateButton(string name)
@@ -91,31 +116,36 @@ public static class ModdingScreenUiPatch
         };
     }
 
-    private static void RefreshButtonText(Button? pointBtn, Button? voiceBtn)
+    private static void RefreshButtonText(Button? pointBtn, Button? voiceBtn, Button? volumeBtn)
     {
         string point = Merchant2CuteII.script.ModConfig.Options.HandVariant;
         string voice = Merchant2CuteII.script.ModConfig.Options.MerchantVoiceVariant;
+        float voiceDb = Merchant2CuteII.script.ModConfig.Options.ExtraDb;
+        float voiceScale = Merchant2CuteII.script.ModConfig.GetMerchantVoiceVolumeLinear();
 
         if (pointBtn != null)
             pointBtn.Text = $"指向：{point}（点击切换）";
         if (voiceBtn != null)
             voiceBtn.Text = $"语音：{voice}（点击切换）";
+        if (volumeBtn != null)
+            volumeBtn.Text = $"语音音量：{voiceDb:+0.##;-0.##;0} dB ({voiceScale:0.00}x)";
     }
 
-    private static void UpdateButtonPositions(Control container, Button pointBtn, Button voiceBtn)
+    private static void UpdateButtonPositions(Control container, Button pointBtn, Button voiceBtn, Button volumeBtn)
     {
         float marginLeft = 22;
         float marginBottom = 18;
         float spacing = 8;
 
         Vector2 size = pointBtn.Size;
-        float totalHeight = size.Y + spacing + voiceBtn.Size.Y;
+        float totalHeight = size.Y + spacing + voiceBtn.Size.Y + spacing + volumeBtn.Size.Y;
 
         float yBase = container.Size.Y > 0 ? container.Size.Y - totalHeight - marginBottom : 930;
         yBase = MathF.Max(0, yBase);
 
         pointBtn.Position = new Vector2(marginLeft, yBase);
         voiceBtn.Position = new Vector2(marginLeft, yBase + size.Y + spacing);
+        volumeBtn.Position = new Vector2(marginLeft, yBase + (size.Y + spacing) * 2);
     }
 
     private static void TogglePointVariant()
@@ -139,6 +169,20 @@ public static class ModdingScreenUiPatch
         string next = current == "default" ? "jp" : current == "jp" ? "zh" : "default";
 
         Merchant2CuteII.script.ModConfig.Options.MerchantVoiceVariant = next;
+        TrySaveConfig();
+    }
+
+    private static void ToggleVoiceVolume()
+    {
+        float current = Merchant2CuteII.script.ModConfig.Options.ExtraDb;
+        int index = Array.IndexOf(VoiceVolumePresets, current);
+        if (index < 0)
+        {
+            index = 0;
+        }
+
+        int nextIndex = (index + 1) % VoiceVolumePresets.Length;
+        Merchant2CuteII.script.ModConfig.Options.ExtraDb = VoiceVolumePresets[nextIndex];
         TrySaveConfig();
     }
 

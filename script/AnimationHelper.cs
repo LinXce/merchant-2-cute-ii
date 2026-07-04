@@ -1,6 +1,7 @@
 using System;
 using Godot;
 using MegaCrit.Sts2.Core.Bindings.MegaSpine;
+using MegaCrit.Sts2.Core.Helpers;
 
 namespace Merchant2CuteII.script
 {
@@ -19,26 +20,45 @@ namespace Merchant2CuteII.script
             {
                 MegaSprite ms = new MegaSprite(parent);
                 string variant = ModConfig.Options.HandVariant;
-                string animationName = variant == "hand" ? "default" : variant;
-                if (ms.HasAnimation(animationName))
+
+                if (!ms.IsAnimationStateReady())
                 {
-                    ms.GetAnimationState().SetAnimation(animationName);
+                    handNode.RunWhenSpineReady(ms, animState => ApplyVariantToAnimationState(animState, ms, variant));
                     return true;
                 }
-                else if ((variant == "white" || variant == "black") && ms.HasAnimation("foot"))
-                {
-                    ms.GetAnimationState().SetAnimation("foot");
-                    return true;
-                }
-                else if (ms.HasAnimation("default"))
-                {
-                    ms.GetAnimationState().SetAnimation("default");
-                    return true;
-                }
+
+                return ApplyVariantToAnimationState(ms.GetAnimationState(), ms, variant);
             }
             catch (Exception ex)
             {
                 GD.PrintErr($"[Merchant2CuteII] AnimationHelper.TryApplyVariantToHandNode failed: {ex.Message}");
+            }
+
+            return false;
+        }
+
+        private static bool ApplyVariantToAnimationState(MegaAnimationState animState, MegaSprite sprite, string variant)
+        {
+            if (animState == null)
+                return false;
+
+            string animationName = variant == "hand" ? "default" : variant;
+            if (sprite.HasAnimation(animationName))
+            {
+                animState.SetAnimation(animationName);
+                return true;
+            }
+
+            if ((variant == "white" || variant == "black") && sprite.HasAnimation("foot"))
+            {
+                animState.SetAnimation("foot");
+                return true;
+            }
+
+            if (sprite.HasAnimation("default"))
+            {
+                animState.SetAnimation("default");
+                return true;
             }
 
             return false;

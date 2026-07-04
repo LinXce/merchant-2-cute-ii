@@ -141,7 +141,7 @@ public class MerchantConsoleCmd : AbstractConsoleCmd
 
         if (verb == "status")
         {
-            return new CmdResult(success: true, msg: $"Merchant voice: {Merchant2CuteII.script.ModConfig.Options.MerchantVoiceVariant}, extraDb: {Merchant2CuteII.script.ModConfig.Options.ExtraDb}");
+            return new CmdResult(success: true, msg: $"Merchant voice: {Merchant2CuteII.script.ModConfig.Options.MerchantVoiceVariant}, voiceDb: {Merchant2CuteII.script.ModConfig.Options.ExtraDb}");
         }
 
         // set decibel parameter: merchant voice db <value>
@@ -163,7 +163,7 @@ public class MerchantConsoleCmd : AbstractConsoleCmd
                 GD.PrintErr($"[Merchant2CuteII] Failed to save config: {ex.Message}");
             }
 
-            return new CmdResult(success: true, msg: $"Set merchant voice extraDb to {parsed} dB.");
+            return new CmdResult(success: true, msg: $"Set merchant voice volume to {parsed} dB.");
         }
 
         if (verb != "default" && verb != "jp" && verb != "zh" && verb != "toggle")

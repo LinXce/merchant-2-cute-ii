@@ -32,7 +32,7 @@ public static class ModConfig
         private static string _handVariant = "hand";
         private static string _merchantVoiceVariant = "default";
 
-        private static float _extraDb = 4f;
+        private static float _extraDb = 0f;
         private static string _foulPotionAnimation = "poison";
 
         public static string HandVariant
@@ -58,7 +58,7 @@ public static class ModConfig
         public static float ExtraDb
         {
             get => _extraDb;
-            set => _extraDb = value;
+            set => _extraDb = Mathf.Clamp(value, -12f, 12f);
         }
 
         public static string FoulPotionAnimation
@@ -83,6 +83,11 @@ public static class ModConfig
             if (normalized == "zh") return "zh";
             return "default";
         }
+    }
+
+    public static float GetMerchantVoiceVolumeLinear()
+    {
+        return Mathf.DbToLinear(Options.ExtraDb);
     }
 
     public static class Voice

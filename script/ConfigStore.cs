@@ -13,7 +13,7 @@ public static class ConfigStore
     {
         public string HandVariant { get; set; } = "hand";
         public string MerchantVoiceVariant { get; set; } = "default";
-        public float ExtraDb { get; set; } = 4f;
+        public float ExtraDb { get; set; } = 0f;
         public string FoulPotionAnimation { get; set; } = "poison";
     }
 

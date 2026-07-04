@@ -111,11 +111,6 @@ public static class MerchantButtonPatch
 [HarmonyPatch(typeof(NMerchantRoom), "FoulPotionThrown")]
 public static class MerchantRoomFoulPotionPatch
 {
-    [HarmonyPostfix]
-    public static void Postfix(NMerchantRoom __instance)
-    {
-    }
-
     [HarmonyPrefix]
     public static bool Prefix(NMerchantRoom __instance)
     {
@@ -139,15 +134,10 @@ public static class MerchantRoomFoulPotionPatch
                 return false;
             }
 
-            MegaSprite megaSprite = new MegaSprite(merchantVisual);
-            if (!megaSprite.HasAnimation("poison"))
+            if (!AnimationHelper.TrySetAnimationOnTarget(merchantVisual, ModConfig.Options.FoulPotionAnimation))
             {
-                GD.PrintErr("[Merchant2CuteII] Poison animation does not exist on merchant skeleton");
-                return false;
+                GD.PrintErr($"[Merchant2CuteII] Merchant animation '{ModConfig.Options.FoulPotionAnimation}' does not exist or is not ready");
             }
-
-            megaSprite.GetAnimationState().SetAnimation(ModConfig.Options.FoulPotionAnimation);
-            GD.Print("[Merchant2CuteII] Set merchant animation to poison");
 
             LocString? locString = Rng.Chaotic.NextItem(MerchantRoom.Dialogue.FoulPotionLines);
             if (locString != null)
@@ -199,9 +189,11 @@ public static class MerchantVoiceSfxPatch
 
     public static bool TryPlayVoice(string voicePath, float volume, float extraDb = 0f)
     {
+        float adjustedVolume = Mathf.Max(0f, volume * Mathf.DbToLinear(extraDb));
+
         if (NDebugAudioManager.Instance != null)
         {
-            NDebugAudioManager.Instance.Play(voicePath, volume + extraDb);
+            NDebugAudioManager.Instance.Play(voicePath, adjustedVolume);
             return true;
         }
 
@@ -222,7 +214,7 @@ public static class MerchantVoiceSfxPatch
         AudioStreamPlayer player = new AudioStreamPlayer
         {
             Stream = stream,
-            VolumeLinear = volume + extraDb,
+            VolumeLinear = adjustedVolume,
             Bus = "SFX",
             Name = "MerchantVoiceFallbackPlayer"
         };
@@ -255,9 +247,16 @@ public static class MerchantCharacterPlayAnimationPatch
             }
 
             MegaSprite megaSprite = new MegaSprite(spineNode);
-            MegaTrackEntry? megaTrackEntry = megaSprite.GetAnimationState().SetAnimation(anim, loop);
-            if (loop && megaTrackEntry != null)
+            MegaAnimationState animationState = megaSprite.GetAnimationState();
+            animationState.SetAnimation(anim, loop);
+            if (loop)
             {
+                using MegaTrackEntry? megaTrackEntry = animationState.GetCurrent(0);
+                if (megaTrackEntry == null)
+                {
+                    return false;
+                }
+
                 megaTrackEntry.SetTrackTime(megaTrackEntry.GetAnimationEnd() * Rng.Chaotic.NextFloat());
             }
 

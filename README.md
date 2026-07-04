@@ -8,11 +8,14 @@
 2. 如果没有mods文件夹可以手动创建。
 3. 如果无法使用命令行修改，在用户数据下找到merchant2cute_config.json修改里面的参数
 
+### v1.5.1-260704
+
+修复了108版本的bug
+
 ### v1.5.0-260522
 
 在游戏设置-模组设置中添加了新的切换方式
 <img width="2559" height="1439" alt="f3b9a753-9af8-49c9-8eea-cc4a1a232691" src="https://github.com/user-attachments/assets/bd55063d-4342-4af1-939b-a21ab39ff1c0" />
-
 
 ### v1.4.0-260506
 
@@ -30,9 +33,9 @@
     - 说明：设置在投掷有害药水（FoulPotionThrown）时使用的动画名称（默认 `poison`）。
 
 - merchant voice default|jp|zh|toggle|status|db <value>
-    - 说明：切换/查询商人语音变体；新增 `db` 子命令用于设置 `ExtraDb`（以 dB 为单位的额外增益，用于替换音频播放时调整音量）。
-    - 示例：`merchant voice db 3.0` 将 `ExtraDb` 设置为 +3.0 dB 并持久化。
-    - 建议：±10.0 dB以内，别伤到耳朵了。
+    - 说明：切换/查询商人语音变体；`db` 子命令用于设置语音相对音量（dB），支持负值降音量和正值增音量。
+    - 示例：`merchant voice db -6` 将语音音量降低到约 0.5x；`merchant voice db 3` 将语音音量提高到约 1.41x。
+    - 默认值：`0 dB`（不额外放大）。建议范围：`-12 ~ +12 dB`。
 
 所有设置（point/voice/foul/ExtraDb）将保存到 `user://merchant2cute_config.json`，在启动时自动加载。
 

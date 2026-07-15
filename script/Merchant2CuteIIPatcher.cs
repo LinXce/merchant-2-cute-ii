@@ -250,7 +250,7 @@ public static class MerchantCharacterPlayAnimationPatch
             MegaAnimationState animationState = megaSprite.GetAnimationState();
             if (AnimationHelper.ShouldUseLegacyHandSwitching())
             {
-                animationState.BoundObject.Call("set_animation", anim);
+                animationState.BoundObject.Call("set_animation", anim, loop);
             }
             else
             {

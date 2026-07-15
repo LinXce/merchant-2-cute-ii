@@ -61,17 +61,17 @@ namespace Merchant2CuteII.script
             string animationName = variant == "hand" ? "default" : variant;
             if (sprite.HasAnimation(animationName))
             {
-                return TrySetAnimationLegacy(sprite.GetAnimationState(), animationName);
+                return TrySetAnimationLegacy(sprite.GetAnimationState(), animationName, false);
             }
 
             if ((variant == "white" || variant == "black") && sprite.HasAnimation("foot"))
             {
-                return TrySetAnimationLegacy(sprite.GetAnimationState(), "foot");
+                return TrySetAnimationLegacy(sprite.GetAnimationState(), "foot", false);
             }
 
             if (sprite.HasAnimation("default"))
             {
-                return TrySetAnimationLegacy(sprite.GetAnimationState(), "default");
+                return TrySetAnimationLegacy(sprite.GetAnimationState(), "default", false);
             }
 
             return false;
@@ -101,12 +101,12 @@ namespace Merchant2CuteII.script
             return false;
         }
 
-        private static bool TrySetAnimationLegacy(MegaAnimationState animState, string animationName)
+        private static bool TrySetAnimationLegacy(MegaAnimationState animState, string animationName, bool loop, int trackId = 0)
         {
             if (animState == null)
                 return false;
 
-            animState.BoundObject.Call("set_animation", animationName);
+            animState.BoundObject.Call("set_animation", animationName, loop, trackId);
             return true;
         }
 
@@ -131,7 +131,7 @@ namespace Merchant2CuteII.script
                 {
                     if (ShouldUseLegacyHandSwitching())
                     {
-                        return TrySetAnimationLegacy(ms.GetAnimationState(), animationName);
+                        return TrySetAnimationLegacy(ms.GetAnimationState(), animationName, false);
                     }
 
                     return TrySetAnimationNew(ms.GetAnimationState(), animationName, false);

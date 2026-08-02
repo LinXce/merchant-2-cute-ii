@@ -13,6 +13,8 @@ using MegaCrit.Sts2.Core.Nodes.Screens.Shops;
 using MegaCrit.Sts2.Core.Nodes.Vfx;
 using MegaCrit.Sts2.Core.Nodes.Vfx.Utilities;
 using MegaCrit.Sts2.Core.Random;
+using MegaCrit.Sts2.Core.Debug;
+using MegaCrit.Sts2.Core.Helpers;
 
 namespace Merchant2CuteII.script;
 
@@ -45,6 +47,37 @@ internal static class MerchantContextResolver
     }
 }
 
+internal static class MerchantVisualResolver
+{
+    private static readonly SemanticVersion MerchantVisualOwnerChangeVersion = new SemanticVersion(0, 110, 0);
+
+    public static bool ShouldUseLegacyMerchantVisualLookup()
+    {
+        SemanticVersion? gameVersion = ReleaseInfoManager.Instance.SemVer;
+        if (gameVersion == null)
+        {
+            // Keep the previous behavior when version is unavailable.
+            return true;
+        }
+
+        return gameVersion.CompareTo(MerchantVisualOwnerChangeVersion) < 0;
+    }
+
+    public static Node? TryGetMerchantVisual(Node? node)
+    {
+        if (node == null)
+        {
+            return null;
+        }
+
+        // Godot 0.110.0 scene ownership changes can make `%MerchantVisual` inaccessible
+        // from parent scenes, so fall back to direct child and recursive lookup.
+        return node.GetNodeOrNull("%MerchantVisual")
+            ?? node.GetNodeOrNull("MerchantVisual")
+            ?? node.FindChild("MerchantVisual", true, false);
+    }
+}
+
 [HarmonyPatch(typeof(NMerchantButton), "_Ready")]
 public static class MerchantButtonPatch
 {
@@ -54,10 +87,12 @@ public static class MerchantButtonPatch
         if (__instance == null)
             return true;
 
-        Node merchantVisual = __instance.GetNodeOrNull("%MerchantVisual");
+        Node? merchantVisual = MerchantVisualResolver.ShouldUseLegacyMerchantVisualLookup()
+            ? __instance.GetNodeOrNull("%MerchantVisual")
+            : MerchantVisualResolver.TryGetMerchantVisual(__instance);
         if (merchantVisual == null)
         {
-            GD.PrintErr("[Merchant2CuteII] Cannot find %MerchantVisual in MerchantButton");
+            GD.PrintErr("[Merchant2CuteII] Cannot find MerchantVisual in MerchantButton");
             return true;
         }
 
@@ -127,10 +162,13 @@ public static class MerchantRoomFoulPotionPatch
             else
                 SfxCmd.Play("event:/sfx/npcs/merchant/merchant_thank_yous");
 
-            Node merchantVisual = __instance.GetNodeOrNull("%MerchantVisual");
+            Node? merchantVisual = MerchantVisualResolver.ShouldUseLegacyMerchantVisualLookup()
+                ? __instance.GetNodeOrNull("%MerchantVisual")
+                : MerchantVisualResolver.TryGetMerchantVisual(__instance.MerchantButton)
+                    ?? MerchantVisualResolver.TryGetMerchantVisual(__instance);
             if (merchantVisual == null)
             {
-                GD.PrintErr("[Merchant2CuteII] Cannot find %MerchantVisual in MerchantRoom");
+                GD.PrintErr("[Merchant2CuteII] Cannot find MerchantVisual in MerchantRoom or MerchantButton");
                 return false;
             }
 

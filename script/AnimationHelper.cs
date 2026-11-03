@@ -1,124 +1,34 @@
-using System;
+﻿using System;
+using System.Collections.Generic;
 using Godot;
-using MegaCrit.Sts2.Core.Debug;
 using MegaCrit.Sts2.Core.Bindings.MegaSpine;
+using MegaCrit.Sts2.Core.Debug;
 using MegaCrit.Sts2.Core.Helpers;
+using Merchant2CuteII.script.Settings;
 
 namespace Merchant2CuteII.script
 {
+    /// <summary>
+    /// Spine 动画操作的小工具。变体选择与骨架切换已挪到 <see cref="SkinApplier"/>；
+    /// 这里保留「按名字放一段动画」的通用能力，供投毒动画等场景使用。
+    /// </summary>
     internal static class AnimationHelper
     {
-        private static readonly SemanticVersion NewSpineReadyVersion = new SemanticVersion(0, 108, 0);
+        // 阈值 NewSpineReadyVersion = 0.108.0 已集中到 Compat/VersionProfile.cs
 
+        /// <summary>对 <c>NMerchantHand</c> 套用「它所在那个商人」的变体设置。</summary>
         public static bool TryApplyVariantToHandNode(Node handNode)
         {
-            if (handNode == null)
-                return false;
-
-            Node? parent = handNode.GetParent();
-            if (parent == null)
-                return false;
-
-            try
-            {
-                MegaSprite ms = new MegaSprite(parent);
-                string variant = ModConfig.Options.HandVariant;
-
-                if (ShouldUseLegacyHandSwitching())
-                {
-                    return ApplyVariantLegacy(ms, variant);
-                }
-
-                if (!ms.IsAnimationStateReady())
-                {
-                    handNode.RunWhenSpineReady(ms, animState => ApplyVariantToAnimationState(animState, ms, variant));
-                    return true;
-                }
-
-                return ApplyVariantToAnimationState(ms.GetAnimationState(), ms, variant);
-            }
-            catch (Exception ex)
-            {
-                GD.PrintErr($"[Merchant2CuteII] AnimationHelper.TryApplyVariantToHandNode failed: {ex.Message}");
-            }
-
-            return false;
+            return SkinApplier.ApplyToHand(handNode);
         }
 
+        /// <summary>旧版 set_animation 签名判断，统一由 <see cref="Compat.VersionProfile"/> 提供。</summary>
         public static bool ShouldUseLegacyHandSwitching()
         {
-            SemanticVersion? gameVersion = ReleaseInfoManager.Instance.SemVer;
-            if (gameVersion == null)
-            {
-                return false;
-            }
-
-            return gameVersion.CompareTo(NewSpineReadyVersion) < 0;
+            return Compat.VersionProfile.LegacyAnimationSignature;
         }
 
-        private static bool ApplyVariantLegacy(MegaSprite sprite, string variant)
-        {
-            string animationName = variant == "hand" ? "default" : variant;
-            if (sprite.HasAnimation(animationName))
-            {
-                return TrySetAnimationLegacy(sprite.GetAnimationState(), animationName, false);
-            }
-
-            if ((variant == "white" || variant == "black") && sprite.HasAnimation("foot"))
-            {
-                return TrySetAnimationLegacy(sprite.GetAnimationState(), "foot", false);
-            }
-
-            if (sprite.HasAnimation("default"))
-            {
-                return TrySetAnimationLegacy(sprite.GetAnimationState(), "default", false);
-            }
-
-            return false;
-        }
-
-        private static bool ApplyVariantToAnimationState(MegaAnimationState animState, MegaSprite sprite, string variant)
-        {
-            if (animState == null)
-                return false;
-
-            string animationName = variant == "hand" ? "default" : variant;
-            if (sprite.HasAnimation(animationName))
-            {
-                return TrySetAnimationNew(animState, animationName, false);
-            }
-
-            if ((variant == "white" || variant == "black") && sprite.HasAnimation("foot"))
-            {
-                return TrySetAnimationNew(animState, "foot", false);
-            }
-
-            if (sprite.HasAnimation("default"))
-            {
-                return TrySetAnimationNew(animState, "default", false);
-            }
-
-            return false;
-        }
-
-        private static bool TrySetAnimationLegacy(MegaAnimationState animState, string animationName, bool loop, int trackId = 0)
-        {
-            if (animState == null)
-                return false;
-
-            animState.BoundObject.Call("set_animation", animationName, loop, trackId);
-            return true;
-        }
-
-        private static bool TrySetAnimationNew(MegaAnimationState animState, string animationName, bool loop, int trackId = 0)
-        {
-            if (animState == null)
-                return false;
-
-            animState.BoundObject.Call("set_animation", animationName, loop, trackId);
-            return true;
-        }
-
+        /// <summary>在目标节点上播放指定动画；不存在则返回 false（不会乱塞不存在的动画名）。</summary>
         public static bool TrySetAnimationOnTarget(Node target, string animationName)
         {
             if (target == null || string.IsNullOrEmpty(animationName))
@@ -126,16 +36,14 @@ namespace Merchant2CuteII.script
 
             try
             {
-                MegaSprite ms = new MegaSprite(target);
-                if (ms.HasAnimation(animationName))
+                var ms = new MegaSprite(target);
+                if (!HasAnimation(ms, animationName))
                 {
-                    if (ShouldUseLegacyHandSwitching())
-                    {
-                        return TrySetAnimationLegacy(ms.GetAnimationState(), animationName, false);
-                    }
-
-                    return TrySetAnimationNew(ms.GetAnimationState(), animationName, false);
+                    return false;
                 }
+
+                MegaAnimationState state = ms.GetAnimationState();
+                return Play(state, animationName);
             }
             catch (Exception ex)
             {
@@ -143,6 +51,55 @@ namespace Merchant2CuteII.script
             }
 
             return false;
+        }
+
+        /// <summary>按候选链播放第一个存在的动画（例如 white → foot → default）。</summary>
+        public static bool TrySetFirstAvailableAnimation(Node target, IReadOnlyList<string> candidates)
+        {
+            if (target == null || candidates == null || candidates.Count == 0)
+                return false;
+
+            try
+            {
+                var ms = new MegaSprite(target);
+                MegaAnimationState state = ms.GetAnimationState();
+                foreach (string name in candidates)
+                {
+                    if (HasAnimation(ms, name) && Play(state, name))
+                    {
+                        return true;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                GD.PrintErr($"[Merchant2CuteII] AnimationHelper.TrySetFirstAvailableAnimation failed: {ex.Message}");
+            }
+
+            return false;
+        }
+
+        public static bool HasAnimation(MegaSprite sprite, string animationName)
+        {
+            try
+            {
+                return sprite.HasAnimation(animationName);
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private static bool Play(MegaAnimationState state, string animationName, bool loop = false, int track = 0)
+        {
+            if (state == null)
+            {
+                return false;
+            }
+
+            state.BoundObject.Call("set_animation", animationName, loop, track);
+            return true;
         }
     }
 }

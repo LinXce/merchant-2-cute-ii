@@ -1,76 +1,91 @@
-# [STS2 mod] 商人娘化mod2
+# [STS2 mod] Merchant 2 Cute II
 
-本项目的贴图基于AI生成并进行了部分修改。
+![godot](https://img.shields.io/badge/godot-4.5-478cbf?style=flat)
+![dotnet](https://img.shields.io/badge/.NET-8.0-512bd4?style=flat)
+![game](https://img.shields.io/badge/STS2-0.107.1%20~%200.111.x-8a1c1c?style=flat)
+![version](https://img.shields.io/badge/version-1.6.0-red?style=flat)
+![license](https://img.shields.io/badge/license-GPL--3.0-blue?style=flat)
 
-# mod使用方法
+[English](README.md) · [简体中文](README.zh-CN.md)
 
-1. 下载 [Releases](https://github.com/LinXce/merchant-2-cute-ii/releases) 的Merchant2CuteII压缩包 解压到杀戮尖塔2游戏目录下的mods文件夹。
-2. 如果没有mods文件夹可以手动创建。
-3. 如果无法使用命令行修改，在用户数据下找到merchant2cute_config.json修改里面的参数
+A texture-replacement mod for **Slay the Spire 2** that turns the merchant (and the reverse merchant) into a cute girl — new Spine art, mix-and-match body/hand sets, and fully replaced voice lines. No gameplay changes.
 
-### v1.5.1-260704
+Artwork was AI-generated and then edited by hand.
 
-修复了108版本的bug
+## Preview
 
-### v1.5.0-260522
+**Shop merchant**
 
-在游戏设置-模组设置中添加了新的切换方式
-<img width="2559" height="1439" alt="f3b9a753-9af8-49c9-8eea-cc4a1a232691" src="https://github.com/user-attachments/assets/bd55063d-4342-4af1-939b-a21ab39ff1c0" />
+<img width="820" alt="shop merchant" src="README.assets/8d707eb1d584fb71e47a80c297b9c18d.png" />
 
-### v1.4.0-260506
+<img width="820" alt="shop merchant" src="README.assets/8507226e653e177fe51e0caf408eef9a.png" />
 
-命令重置说明：
+**Reverse merchant / event & battle**
 
-- merchant point hand|foot|toggle|status
-    - 说明：将原先的 `merchant hand` / `merchant foot` 移至 `point` 子命令下，用于切换商人手/脚。
-    - 说明补充：新增 `white` 与 `black` 两个子选项。
-    - 示例：
-        - `merchant point white` — 切换为 white 变体（脚样式）。
-        - `merchant point black` — 切换为 black 变体（脚样式）。
-    - 参数：hand/foot/
+<img width="820" alt="reverse merchant" src="README.assets/e2f44f0a-9789-41a0-8275-2bbacbb8e855.png" />
 
-- merchant foul poison|toggle|status
-    - 说明：设置在投掷有害药水（FoulPotionThrown）时使用的动画名称（默认 `poison`）。
+<img width="820" alt="reverse merchant battle" src="README.assets/94c06d22-6e54-4b84-b5e2-214f7f9b769e.png" />
 
-- merchant voice default|jp|zh|toggle|status|db <value>
-    - 说明：切换/查询商人语音变体；`db` 子命令用于设置语音相对音量（dB），支持负值降音量和正值增音量。
-    - 示例：`merchant voice db -6` 将语音音量降低到约 0.5x；`merchant voice db 3` 将语音音量提高到约 1.41x。
-    - 默认值：`0 dB`（不额外放大）。建议范围：`-12 ~ +12 dB`。
+## Features
 
-所有设置（point/voice/foul/ExtraDb）将保存到 `user://merchant2cute_config.json`，在启动时自动加载。
+- **Texture replacement only** — merchant art is swapped, gameplay logic is untouched (gold rewards, the reverse merchant's fight transition, dialogue and screen shake all stay vanilla).
+- **Body / hand sets can be mixed** — pick which art set the body uses and which the hands use, independently, for each merchant.
+- **Hand variants** — `hand` / `barefoot` / `white stockings` / `black stockings`. Which variants are available follows the hand art you picked.
+- **Shop leg texture** — an extra leg image in the shop UI. It only appears together with the `hand` variant and can be toggled on/off (default **on**).
+- **Voice replacement** — vanilla / Japanese / Chinese, with a volume slider (−12 ~ +12 dB). Covers both merchants, including the reverse merchant's laugh and the "thank you" line after a Foul Potion.
+- **Legacy config migration** — old `merchant2cute_config.json` is migrated automatically, and legacy key names are still written so downgrading stays safe.
+- **Version tolerant** — no minimum game version is declared; version differences only select a code path (verified on 0.107.1 and 0.111.0).
 
-### v1.3.0-260503
+## In-game settings
 
-更新配音
-命令行:
-merchant voice default|zh|jp
-切换原版、中文、日语配音
+`Settings → Game Settings → 「商人外观」 → 打开设置` opens a full settings page (not a popup), with the same layout as the vanilla settings screen. Changes apply immediately.
 
-### v1.2.0-260501
+<img width="820" alt="settings page" src="README.assets/bbf57a88-c6ec-4193-9733-68d0ab72c55d.png" />
 
-更新hand-foot切换。
-按( ` )键打开杀戮尖塔2的控制台，输入merchant hand或者merchant foot进行切换。
+Per merchant you can set **body art**, **hand art** and **hand variant**; the voice section holds language and volume. Everything is stored in `merchant2cute_config.json` under the user data directory, and can also be changed from the console.
 
-### v1.1.1-260430
+## Installation
 
-![image-20260430211814082](README.assets/image-20260430211814082.png)
+1. Download the archive from [Releases](https://github.com/LinXce/merchant-2-cute-ii/releases).
+2. Extract it into `Slay the Spire 2/mods/` (create the folder if it does not exist).
+3. Launch the game. If you prefer not to use the console, edit `merchant2cute_config.json` in the user data directory instead.
 
-### v1.1.0-260429
+Requirements: Slay the Spire 2 **0.107.1 ~ 0.111.x**. No other mods are required.
 
-添加了假商人和战斗动画。动画做的很烂 X）不过很难和假商人打一架所以无关紧要......吧。
+## Console commands
 
-![e2f44f0a-9789-41a0-8275-2bbacbb8e855](README.assets/e2f44f0a-9789-41a0-8275-2bbacbb8e855.png)
+Press `` ` `` to open the console.
 
-![94c06d22-6e54-4b84-b5e2-214f7f9b769e](README.assets/94c06d22-6e54-4b84-b5e2-214f7f9b769e.png)
+```
+merchant status                       # current settings for both merchants
+merchant real|fake body  <own|other>   # body art set (reverse merchant is fixed to its own)
+merchant real|fake hand-set <own|other>
+merchant real|fake hand  <hand|foot|white|black|toggle>
+merchant real|fake leg   <on|off|toggle>
+merchant voice <default|jp|zh|toggle|db <value>>
+merchant tune                        # fine-tune the visual offset/scale, per merchant × art set
+```
 
-### v1.0.0-260428
+## Compatibility
 
-速度赶出来的版本，只在STS2进行了简单测试。
+| Game version | Result |
+|---|---|
+| 0.107.1 | tested ✔ |
+| 0.111.0 | tested ✔ |
+| 0.109.x | expected to work (between the two compatibility thresholds) |
 
-该版本只包含商人部分，不包含假商人。（储君娘化mod为Mesugaki_Regent）
+Compatibility is handled with capability flags — a couple of version thresholds decide *which branch* runs, never *whether the mod loads*. Every patch also binds arguments positionally, so renamed parameters cannot break it.
 
-![8d707eb1d584fb71e47a80c297b9c18d](README.assets/8d707eb1d584fb71e47a80c297b9c18d.png)
+## Changelog
 
-![8507226e653e177fe51e0caf408eef9a](README.assets/8507226e653e177fe51e0caf408eef9a.png)
+**v1.6.0**
 
-![6ab804f2819b3250c5a7e6233fddeb0c](README.assets/6ab804f2819b3250c5a7e6233fddeb0c.png)
+- Settings rework: body and hand art can be mixed across sets, per merchant.
+- New settings page inside the vanilla settings screen, following the game's theme and wording.
+- Voice replacement now covers both merchants and both audio entry points.
+- Leg texture rule: only with the `hand` variant, toggleable, default on.
+- Reverse merchant body art is locked to its own set.
+
+## License
+
+[GNU General Public License v3.0](LICENSE.txt)

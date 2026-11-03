@@ -1,12 +1,21 @@
-using Godot;
+﻿using Godot;
+using Merchant2CuteII.script.Settings;
 
 namespace Merchant2CuteII.script;
 
+/// <summary>
+/// 资源路径与几何常量 + **旧 API 兼容层**。
+///
+/// schema 2 之后，真正的设置数据在 <see cref="SettingsHost"/>.Current 里（分真/假商人）。
+/// 这里保留 <c>ModConfig.Options.*</c> 是因为控制台命令、Patches 与旧版本配置文件都还在用它；
+/// 每个属性都是对新结构的读写代理，旧的语义（"一个全局 HandVariant 同时管两个商人"）被保留。
+/// </summary>
 public static class ModConfig
 {
     public static class Paths
     {
         public static string MerchantLegTexture => "res://animations/customs/merchant/leg.png";
+
         public static string[] MerchantVoicePaths => new[]
         {
             "res://debug_audio/jp/welcome.mp3",
@@ -27,80 +36,69 @@ public static class ModConfig
         };
     }
 
+    /// <summary>旧 API。读写的是「真商人」那一份设置；写的时候两个商人一起改（旧行为）。</summary>
     public static class Options
     {
-        private static string _handVariant = "hand";
-        private static string _merchantVoiceVariant = "default";
-
-        private static float _extraDb = 0f;
-        private static string _foulPotionAnimation = "poison";
-
         public static string HandVariant
         {
-            get => _handVariant;
-            set => _handVariant = NormalizeVariant(value);
+            get => SettingsHost.Current.RealMerchant.HandVariant;
+            set
+            {
+                MerchantSkinSettings real = SettingsHost.Current.RealMerchant;
+                MerchantSkinSettings fake = SettingsHost.Current.FakeMerchant;
+                real.HandVariant = HandVariants.NormalizeFor(MerchantKind.Real, real.HandSet, value);
+                fake.HandVariant = HandVariants.NormalizeFor(MerchantKind.Fake, fake.HandSet, value);
+            }
         }
 
-        public static bool UseFoot => HandVariant == "foot";
+        /// <summary>真商人是否选了「脚」系变体。</summary>
+        public static bool UseFoot => HandVariant == HandVariants.Foot;
 
-        // Treat white/black as foot-like variants (affects leg visibility)
-        public static bool UseFootLike => HandVariant == "foot" || HandVariant == "white" || HandVariant == "black";
+        /// <summary>脚 / 白 / 黑 都算「脚系」（旧版用来决定购物界面的腿要不要显示）。</summary>
+        public static bool UseFootLike => SettingsStore.IsFootLike(HandVariant);
 
         public static string MerchantVoiceVariant
         {
-            get => _merchantVoiceVariant;
-            set => _merchantVoiceVariant = NormalizeVoiceVariant(value);
+            get => SettingsHost.Current.Voice.Language;
+            set => SettingsHost.Current.Voice.Language = VoiceLanguages.Normalize(value);
         }
 
-        public static bool UseMerchantJpVoice => MerchantVoiceVariant == "jp";
-        public static bool UseMerchantZhVoice => MerchantVoiceVariant == "zh";
+        public static bool UseMerchantJpVoice => MerchantVoiceVariant == VoiceLanguages.Japanese;
+
+        public static bool UseMerchantZhVoice => MerchantVoiceVariant == VoiceLanguages.Chinese;
 
         public static float ExtraDb
         {
-            get => _extraDb;
-            set => _extraDb = Mathf.Clamp(value, -12f, 12f);
-        }
-
-        public static string FoulPotionAnimation
-        {
-            get => _foulPotionAnimation;
-            set => _foulPotionAnimation = string.IsNullOrEmpty(value) ? "poison" : value;
-        }
-
-        private static string NormalizeVariant(string? variant)
-        {
-            string normalized = (variant ?? string.Empty).Trim().ToLowerInvariant();
-            if (normalized == "foot") return "foot";
-            if (normalized == "white") return "white";
-            if (normalized == "black") return "black";
-            return "hand";
-        }
-
-        private static string NormalizeVoiceVariant(string? variant)
-        {
-            string normalized = (variant ?? string.Empty).Trim().ToLowerInvariant();
-            if (normalized == "jp") return "jp";
-            if (normalized == "zh") return "zh";
-            return "default";
+            get => SettingsHost.Current.Voice.VolumeDb;
+            set => SettingsHost.Current.Voice.VolumeDb = Mathf.Clamp(value, -12f, 12f);
         }
     }
 
     public static float GetMerchantVoiceVolumeLinear()
     {
-        return Mathf.DbToLinear(Options.ExtraDb);
+        return SettingsHost.Current.Voice.LinearGain;
     }
 
     public static class Voice
     {
+        /// <summary>
+        /// 事件名 → 本 mod 的音频相对路径（相对 <c>res://debug_audio/</c>）。
+        /// 返回 null 表示"不替换，用原版音效"。
+        /// </summary>
         public static string? GetMerchantVoicePath(string sfxEvent)
         {
-            string variant = Options.MerchantVoiceVariant;
-            string[] candidates = variant switch
+            string language = SettingsHost.Current.Voice.Language;
+            string[] candidates = language switch
             {
-                "jp" => GetJpCandidates(sfxEvent),
-                "zh" => GetZhCandidates(sfxEvent),
-                _ => System.Array.Empty<string>()
+                VoiceLanguages.Japanese => GetJpCandidates(sfxEvent),
+                VoiceLanguages.Chinese => GetZhCandidates(sfxEvent),
+                _ => System.Array.Empty<string>(),
             };
+
+            if (candidates.Length == 0)
+            {
+                return null;
+            }
 
             foreach (string candidate in candidates)
             {
@@ -110,18 +108,25 @@ public static class ModConfig
                 }
             }
 
-            if (candidates.Length > 0)
-            {
-                // fall back to the first candidate so missing files are visible in logs
-                return candidates[0];
-            }
-
-            // default: no replacement
-            return null;
+            // 文件缺失也返回第一个，让日志里能看到问题
+            return candidates[0];
         }
 
         private static string[] GetJpCandidates(string sfxEvent)
         {
+            // ---- 假商人（reverse_merchant_*）：同样全部替换成我们的语音 ----
+            if (sfxEvent.Contains("reverse_merchant"))
+            {
+                if (sfxEvent.Contains("laugh"))
+                {
+                    return new[] { "jp/welcome.mp3" };
+                }
+
+                // hurt / die 等战斗音效统一用"不满"语音，避免战斗中突然冒出原版男声
+                return new[] { "jp/disapointment.mp3" };
+            }
+
+            // ---- 商店商人（merchant_*）----
             if (sfxEvent.Contains("merchant_welcome"))
             {
                 return new[] { "jp/welcome.mp3" };
@@ -142,13 +147,22 @@ public static class ModConfig
 
         private static string[] GetZhCandidates(string sfxEvent)
         {
+            // ---- 假商人（reverse_merchant_*）----
+            if (sfxEvent.Contains("reverse_merchant"))
+            {
+                if (sfxEvent.Contains("laugh"))
+                {
+                    // 中文有两段欢迎语音，第二段拿来做笑声
+                    return new[] { "zh/welcome2.wav", "zh/welcome1.wav" };
+                }
+
+                return new[] { "zh/disappointment.wav" };
+            }
+
+            // ---- 商店商人（merchant_*）----
             if (sfxEvent.Contains("merchant_welcome"))
             {
-                // int idx = (int)(System.DateTime.UtcNow.Ticks % 2);
-                // return idx == 0
-                // 	? new[] { "zh/welcome1.wav" }
-                // 	: new[] { "zh/welcome2.wav" };
-                return new[] { "zh/welcome1.wav" };
+                return new[] { "zh/welcome1.wav", "zh/welcome2.wav" };
             }
 
             if (sfxEvent.Contains("merchant_thank_yous") || sfxEvent.Contains("merchant_passive"))

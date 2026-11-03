@@ -46,6 +46,49 @@
         </Reference>
     </ItemGroup>
 
+    <!--
+      ==== 可选的前置库设置接入（默认关闭，保持零依赖） ====
+      BaseLib:   dotnet build -c ExportRelease -p:MerchantBaseLib=true
+      RitsuLib:  dotnet build -c ExportRelease -p:MerchantRitsuLib=true
+      两个都开:   -p:MerchantBaseLib=true -p:MerchantRitsuLib=true
+
+      打开之后记得在 Merchant2CuteII.json 的 dependencies 里声明对应库，
+      否则玩家侧可能缺少前置而加载失败（见 docs/16）。
+    -->
+    <PropertyGroup>
+        <MerchantBaseLib Condition="'$(MerchantBaseLib)' == ''">false</MerchantBaseLib>
+        <MerchantRitsuLib Condition="'$(MerchantRitsuLib)' == ''">false</MerchantRitsuLib>
+        <MerchantLibsRoot Condition="'$(MerchantLibsRoot)' == ''">$(MSBuildProjectDirectory)\..\..\other</MerchantLibsRoot>
+        <DefineConstants Condition="'$(MerchantBaseLib)' == 'true'">$(DefineConstants);MERCHANT_BASELIB</DefineConstants>
+        <DefineConstants Condition="'$(MerchantRitsuLib)' == 'true'">$(DefineConstants);MERCHANT_RITSILIB</DefineConstants>
+    </PropertyGroup>
+
+    <ItemGroup Condition="'$(MerchantBaseLib)' == 'true'">
+        <Reference Include="BaseLib">
+            <HintPath>$(MerchantLibsRoot)\BaseLib\BaseLib.dll</HintPath>
+            <Private>false</Private>
+        </Reference>
+    </ItemGroup>
+
+    <ItemGroup Condition="'$(MerchantRitsuLib)' == 'true'">
+        <Reference Include="STS2-RitsuLib">
+            <HintPath>$(MerchantLibsRoot)\STS2-RitsuLib\compat\0.111.0\STS2-RitsuLib.dll</HintPath>
+            <Private>false</Private>
+        </Reference>
+        <Reference Include="STS2-RitsuLib.Runtime">
+            <HintPath>$(MerchantLibsRoot)\STS2-RitsuLib\compat\0.111.0\STS2-RitsuLib.Runtime.dll</HintPath>
+            <Private>false</Private>
+        </Reference>
+        <Reference Include="STS2-RitsuLib.Settings">
+            <HintPath>$(MerchantLibsRoot)\STS2-RitsuLib\shared\STS2-RitsuLib.Settings.dll</HintPath>
+            <Private>false</Private>
+        </Reference>
+        <Reference Include="STS2-RitsuLib.Shared">
+            <HintPath>$(MerchantLibsRoot)\STS2-RitsuLib\shared\STS2-RitsuLib.Shared.dll</HintPath>
+            <Private>false</Private>
+        </Reference>
+    </ItemGroup>
+
     <!-- 自动复制 DLL -->
     <Target Name="CopyToModsFolder" AfterTargets="Build">
         <PropertyGroup>

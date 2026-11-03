@@ -1,9 +1,10 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using Godot;
 using HarmonyLib;
 using MegaCrit.Sts2.Core.Bindings.MegaSpine;
 using MegaCrit.Sts2.Core.Audio.Debug;
 using MegaCrit.Sts2.Core.Commands;
+using MegaCrit.Sts2.Core.Nodes.Audio;
 using MegaCrit.Sts2.Core.Nodes.Events.Custom;
 using MegaCrit.Sts2.Core.Localization;
 using MegaCrit.Sts2.Core.Nodes;
@@ -15,6 +16,7 @@ using MegaCrit.Sts2.Core.Nodes.Vfx.Utilities;
 using MegaCrit.Sts2.Core.Random;
 using MegaCrit.Sts2.Core.Debug;
 using MegaCrit.Sts2.Core.Helpers;
+using Merchant2CuteII.script.Settings;
 
 namespace Merchant2CuteII.script;
 
@@ -49,18 +51,12 @@ internal static class MerchantContextResolver
 
 internal static class MerchantVisualResolver
 {
-    private static readonly SemanticVersion MerchantVisualOwnerChangeVersion = new SemanticVersion(0, 110, 0);
+    // 阈值 MerchantVisualOwnerChangeVersion = 0.110.0 已集中到 Compat/VersionProfile.cs
 
+    /// <summary>MerchantVisual 宿主变更（0.110.0）判断，统一由 <see cref="Compat.VersionProfile"/> 提供。</summary>
     public static bool ShouldUseLegacyMerchantVisualLookup()
     {
-        SemanticVersion? gameVersion = ReleaseInfoManager.Instance.SemVer;
-        if (gameVersion == null)
-        {
-            // Keep the previous behavior when version is unavailable.
-            return true;
-        }
-
-        return gameVersion.CompareTo(MerchantVisualOwnerChangeVersion) < 0;
+        return Compat.VersionProfile.LegacyMerchantVisualLookup;
     }
 
     public static Node? TryGetMerchantVisual(Node? node)
@@ -98,26 +94,17 @@ public static class MerchantButtonPatch
 
         if (merchantVisual is Node2D mv2)
         {
-            mv2.Position += GetMerchantVisualPositionOffset(__instance);
-            mv2.Scale = GetMerchantVisualScale(__instance);
+            // 位置 = 节点基准位 + 组合偏移；缩放按「实际使用的美术」。
+            // 四种「商人 × 美术」组合各有独立数值，并可在游戏内用 `merchant tune` 实时微调。
+            MerchantVisualMotion.Apply(__instance, mv2);
         }
 
+        // 骨架选择（身体/手部用哪套）在场景进树前就已应用，见 MerchantSceneSkinPatch
         return true;
     }
 
-    private static Vector2 GetMerchantVisualPositionOffset(NMerchantButton button)
-    {
-        return MerchantContextResolver.IsFakeMerchantButton(button)
-            ? ModConfig.FakeMerchant.VisualPositionOffset
-            : ModConfig.Merchant.VisualPositionOffset;
-    }
-
-    private static Vector2 GetMerchantVisualScale(NMerchantButton button)
-    {
-        return MerchantContextResolver.IsFakeMerchantButton(button)
-            ? ModConfig.FakeMerchant.VisualScale
-            : ModConfig.Merchant.VisualScale;
-    }
+    // 位置/缩放逻辑已集中到 MerchantVisualMotion（按「商人 × 美术」四种组合分别可调，
+    // 支持游戏内 `merchant tune` 实时微调）。
 }
 
 // !已弃用
@@ -146,21 +133,29 @@ public static class MerchantButtonPatch
 [HarmonyPatch(typeof(NMerchantRoom), "FoulPotionThrown")]
 public static class MerchantRoomFoulPotionPatch
 {
+    /// <summary>
+    /// 只负责**切换动画**，原版逻辑一律放行。
+    ///
+    /// 原版 <c>NMerchantRoom.FoulPotionThrown</c> 只做三件事：
+    /// 播放 <c>merchant_thank_yous</c> 音效 → 随机一句台词气泡 → 屏幕震动；
+    /// 「给 100 金币」「假商人转到战斗状态」都在事件/卡牌流程里，不在这里。
+    ///
+    /// 所以这里用 **void Prefix**（不拦截）：
+    /// <list type="bullet">
+    /// <item>台词、音效、震动照旧由原版执行，绝不重复触发；</item>
+    /// <item>金币结算、战斗状态切换完全不受影响；</item>
+    /// <item>音效替换由 <see cref="MerchantVoiceSfxPatch"/> 在 SfxCmd 层处理，不需要在这里再放一次。</item>
+    /// </list>
+    /// </summary>
     [HarmonyPrefix]
-    public static bool Prefix(NMerchantRoom __instance)
+    public static void Prefix(NMerchantRoom __instance)
     {
         try
         {
             if (__instance == null)
             {
-                return true;
+                return;
             }
-
-            string? voicePath = ModConfig.Voice.GetMerchantVoicePath("merchant_thank_yous");
-            if (!string.IsNullOrEmpty(voicePath) && ModConfig.Options.MerchantVoiceVariant != "default")
-                MerchantVoiceSfxPatch.TryPlayVoice(voicePath, 1f, ModConfig.Options.ExtraDb);
-            else
-                SfxCmd.Play("event:/sfx/npcs/merchant/merchant_thank_yous");
 
             Node? merchantVisual = MerchantVisualResolver.ShouldUseLegacyMerchantVisualLookup()
                 ? __instance.GetNodeOrNull("%MerchantVisual")
@@ -169,31 +164,24 @@ public static class MerchantRoomFoulPotionPatch
             if (merchantVisual == null)
             {
                 GD.PrintErr("[Merchant2CuteII] Cannot find MerchantVisual in MerchantRoom or MerchantButton");
-                return false;
+                return;
             }
 
-            if (!AnimationHelper.TrySetAnimationOnTarget(merchantVisual, ModConfig.Options.FoulPotionAnimation))
+            if (!AnimationHelper.TrySetFirstAvailableAnimation(merchantVisual, AnimationLogic.FoulPotionCandidates()))
             {
-                GD.PrintErr($"[Merchant2CuteII] Merchant animation '{ModConfig.Options.FoulPotionAnimation}' does not exist or is not ready");
+                GD.PrintErr($"[Merchant2CuteII] Merchant animation '{AnimationLogic.FoulPotionAnimation}' does not exist or is not ready");
             }
-
-            LocString? locString = Rng.Chaotic.NextItem(MerchantRoom.Dialogue.FoulPotionLines);
-            if (locString != null)
-            {
-                NSpeechBubbleVfx? nSpeechBubbleVfx = __instance.MerchantButton.PlayDialogue(locString);
-                if (nSpeechBubbleVfx != null)
-                {
-                    NGame.Instance?.ScreenRumble(ShakeStrength.Medium, ShakeDuration.Short, RumbleStyle.Rumble);
-                }
-            }
-
-            return false;
         }
         catch (System.Exception ex)
         {
-            GD.PrintErr($"[Merchant2CuteII] Error adjusting FoulPotionThrown: {ex.Message}");
-            return true;
+            GD.PrintErr($"[Merchant2CuteII] Error switching foul-potion animation: {ex.Message}");
         }
+    }
+
+    /// <summary>投毒动画的候选链由 <see cref="AnimationLogic"/> 统一决定（不暴露给玩家）。</summary>
+    private static string[] FoulAnimationCandidates()
+    {
+        return AnimationLogic.FoulPotionCandidates();
     }
 }
 
@@ -201,28 +189,13 @@ public static class MerchantRoomFoulPotionPatch
 [HarmonyPatch(typeof(SfxCmd), nameof(SfxCmd.Play), new[] { typeof(string), typeof(float) })]
 public static class MerchantVoiceSfxPatch
 {
+    private static readonly System.Collections.Generic.HashSet<string> LoggedUnmapped = new();
+    private static readonly System.Collections.Generic.HashSet<string> LoggedMapped = new();
+
     [HarmonyPrefix]
-    public static bool Prefix(string sfx, float volume)
+    public static bool Prefix(string __0, float __1)
     {
-        string? voicePath = ModConfig.Voice.GetMerchantVoicePath(sfx);
-        if (string.IsNullOrEmpty(voicePath))
-        {
-            return true;
-        }
-
-        try
-        {
-            if (TryPlayVoice(voicePath, volume, ModConfig.Options.ExtraDb))
-            {
-                return false;
-            }
-        }
-        catch (System.Exception ex)
-        {
-            GD.PrintErr($"[Merchant2CuteII] Merchant voice replacement failed: {ex.Message}");
-        }
-
-        return true;
+        return !MerchantVoiceRouter.TryReplace(__0, __1, "SfxCmd");
     }
 
     public static bool TryPlayVoice(string voicePath, float volume, float extraDb = 0f)
@@ -264,15 +237,106 @@ public static class MerchantVoiceSfxPatch
     }
 }
 
+/// <summary>
+/// 真正的音频入口：<c>NAudioManager.PlayOneShot(string, float)</c>。
+///
+/// 为什么需要它：<c>SfxCmd.Play</c> 只有两行，很容易被 JIT **内联**到调用方，
+/// 内联之后 Harmony 对 <c>SfxCmd.Play</c> 的补丁对该调用点就失效了
+/// （表现为"有时替换成功、有时还是原版声音"）。而 <c>NAudioManager.PlayOneShot</c>
+/// 是实例方法且有一定体积，不会被内联，所有音频最终都会经过它。
+/// </summary>
+[HarmonyPatch(typeof(NAudioManager), nameof(NAudioManager.PlayOneShot), new[] { typeof(string), typeof(float) })]
+public static class MerchantVoiceAudioPatch
+{
+    [HarmonyPrefix]
+    public static bool Prefix(string __0, float __1)
+    {
+        return !MerchantVoiceRouter.TryReplace(__0, __1, "NAudioManager");
+    }
+}
+
+/// <summary>带 FMOD 参数的重载同样要拦（<c>SfxCmd.Play(sfx, param, val, volume)</c> 走这条）。</summary>
+[HarmonyPatch(typeof(NAudioManager), nameof(NAudioManager.PlayOneShot),
+    new[] { typeof(string), typeof(System.Collections.Generic.Dictionary<string, float>), typeof(float) })]
+public static class MerchantVoiceAudioParamsPatch
+{
+    [HarmonyPrefix]
+    // 该重载是 (string path, Dictionary<string,float> parameters, float volume)
+    // 只取第 0 个和第 2 个实参，中间的参数字典不需要。
+    public static bool Prefix(string __0, float __2)
+    {
+        return !MerchantVoiceRouter.TryReplace(__0, __2, "NAudioManager(param)");
+    }
+}
+
+/// <summary>
+/// 语音替换的统一路由：两个入口（SfxCmd / NAudioManager）共用同一套映射与日志，
+/// 避免逻辑分叉，也避免同一事件被记录两次。
+/// </summary>
+internal static class MerchantVoiceRouter
+{
+    private static readonly System.Collections.Generic.HashSet<string> LoggedMapped = new();
+    private static readonly System.Collections.Generic.HashSet<string> LoggedUnmapped = new();
+
+    /// <summary>返回 true 表示"已用我们的音频替代，调用方应拦下原版播放"。</summary>
+    public static bool TryReplace(string sfx, float volume, string source)
+    {
+        // 防御：不处理我们自己的资源路径，避免自我递归
+        if (string.IsNullOrEmpty(sfx) || sfx.StartsWith("res://", System.StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        string? voicePath = ModConfig.Voice.GetMerchantVoicePath(sfx);
+        if (string.IsNullOrEmpty(voicePath))
+        {
+            if (ModConfig.Options.MerchantVoiceVariant != "default"
+                && sfx.Contains("merchant", System.StringComparison.OrdinalIgnoreCase)
+                && LoggedUnmapped.Add(sfx))
+            {
+                GD.Print($"[Merchant2CuteII] voice: unmapped merchant sfx '{sfx}' (kept vanilla sound)");
+            }
+
+            return false;
+        }
+
+        try
+        {
+            if (MerchantVoiceSfxPatch.TryPlayVoice(voicePath, volume, ModConfig.Options.ExtraDb))
+            {
+                if (LoggedMapped.Add(sfx))
+                {
+                    GD.Print($"[Merchant2CuteII] voice[{source}]: '{sfx}' -> {voicePath}");
+                }
+
+                return true;
+            }
+        }
+        catch (System.Exception ex)
+        {
+            GD.PrintErr($"[Merchant2CuteII] Merchant voice replacement failed: {ex.Message}");
+        }
+
+        return false;
+    }
+}
+
 [HarmonyPatch(typeof(NMerchantCharacter), "PlayAnimation")]
 public static class MerchantCharacterPlayAnimationPatch
 {
+    /// <summary>
+    /// **最小介入**：动画存在时完全交给原版（原版自己会设置动画并随机起始时间）；
+    /// 只有换了美术之后动画名不存在时，才由我们挑一个降级动画播放并拦下原版。
+    /// </summary>
     [HarmonyPrefix]
-    public static bool Prefix(NMerchantCharacter __instance, string anim, bool loop)
+    public static bool Prefix(NMerchantCharacter __instance, string __0, bool __1)
     {
+        string anim = __0;
+        bool loop = __1;
+
         if (__instance == null)
         {
-            return false;
+            return true;
         }
 
         try
@@ -280,37 +344,52 @@ public static class MerchantCharacterPlayAnimationPatch
             Node? spineNode = TryGetMerchantSpineNode(__instance);
             if (spineNode == null)
             {
-                GD.PrintErr("[Merchant2CuteII] Cannot find a compatible merchant spine node.");
-                return false;
+                return true; // 找不到 spine 就让原版自己试着播
             }
 
             MegaSprite megaSprite = new MegaSprite(spineNode);
-            MegaAnimationState animationState = megaSprite.GetAnimationState();
-            if (AnimationHelper.ShouldUseLegacyHandSwitching())
+
+            // 1) 正常情况：动画存在 → 原版执行，不做任何干预
+            if (AnimationHelper.HasAnimation(megaSprite, anim))
             {
-                animationState.BoundObject.Call("set_animation", anim, loop);
+                return true;
             }
-            else
+
+            // 2) 换过美术导致动画名不存在（例：借来的骨架没有 poison）→ 降级播放
+            foreach (string candidate in FallbackAnimationCandidates(anim))
             {
-                animationState.BoundObject.Call("set_animation", anim, loop, 0);
-            }
-            if (loop)
-            {
-                MegaTrackEntry? megaTrackEntry = animationState.GetCurrent(0);
-                if (megaTrackEntry == null)
+                if (!AnimationHelper.HasAnimation(megaSprite, candidate))
                 {
-                    return false;
+                    continue;
                 }
 
-                megaTrackEntry.SetTrackTime(megaTrackEntry.GetAnimationEnd() * Rng.Chaotic.NextFloat());
+                MegaAnimationState animationState = megaSprite.GetAnimationState();
+                if (AnimationHelper.ShouldUseLegacyHandSwitching())
+                {
+                    animationState.BoundObject.Call("set_animation", candidate, loop);
+                }
+                else
+                {
+                    animationState.BoundObject.Call("set_animation", candidate, loop, 0);
+                }
+
+                if (loop)
+                {
+                    MegaTrackEntry? trackEntry = animationState.GetCurrent(0);
+                    trackEntry?.SetTrackTime(trackEntry.GetAnimationEnd() * Rng.Chaotic.NextFloat());
+                }
+
+                GD.Print($"[Merchant2CuteII] Animation '{anim}' missing on current skeleton -> fallback '{candidate}'");
+                return false;
             }
 
+            GD.Print($"[Merchant2CuteII] Animation '{anim}' not present on current skeleton, skipped.");
             return false;
         }
         catch (System.Exception ex)
         {
             GD.PrintErr($"[Merchant2CuteII] Safe merchant animation failed: {ex.Message}");
-            return false;
+            return true; // 出异常也不拦原版
         }
     }
 
@@ -334,6 +413,12 @@ public static class MerchantCharacterPlayAnimationPatch
         }
 
         return null;
+    }
+
+    /// <summary>换骨架后动画名可能不存在：降级链由 <see cref="AnimationLogic"/> 统一决定。</summary>
+    private static string[] FallbackAnimationCandidates(string requested)
+    {
+        return AnimationLogic.FallbackFor(requested);
     }
 }
 
@@ -408,7 +493,7 @@ public static class MerchantInventoryLegPatch
             RotationDegrees = ModConfig.Merchant.LegRotationDegrees,
             Scale = ModConfig.Merchant.LegScale,
             MouseFilter = Control.MouseFilterEnum.Ignore,
-            Visible = !ModConfig.Options.UseFootLike,
+            Visible = MerchantRuntime.ShouldShowInventoryLeg(MerchantKind.Real),
             ZIndex = 0,
             ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
             StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,

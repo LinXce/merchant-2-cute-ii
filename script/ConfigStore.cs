@@ -1,68 +1,23 @@
-using System;
-using System.IO;
-using System.Text.Json;
-using Godot;
+﻿using Merchant2CuteII.script.Settings;
 
 namespace Merchant2CuteII.script;
 
+/// <summary>
+/// 兼容层：旧代码里的 <c>ConfigStore.Load()/Save()</c> 仍然可用，
+/// 但数据模型已经升级到 <see cref="ModSettings"/>（schema 2，见 <see cref="SettingsStore"/>）。
+/// </summary>
 public static class ConfigStore
 {
-    private const string ConfigPath = "user://merchant2cute_config.json";
-
-    private class ConfigData
-    {
-        public string HandVariant { get; set; } = "hand";
-        public string MerchantVoiceVariant { get; set; } = "default";
-        public float ExtraDb { get; set; } = 0f;
-        public string FoulPotionAnimation { get; set; } = "poison";
-    }
+    public static ModSettings Settings => SettingsHost.Current;
 
     public static void Load()
     {
-        try
-        {
-            var fa = Godot.FileAccess.Open(ConfigPath, Godot.FileAccess.ModeFlags.Read);
-            if (fa == null)
-                return;
-            string json = fa.GetAsText();
-            fa.Close();
-            if (string.IsNullOrEmpty(json))
-                return;
-            var cfg = JsonSerializer.Deserialize<ConfigData>(json);
-            if (cfg == null)
-                return;
-            Merchant2CuteII.script.ModConfig.Options.HandVariant = cfg.HandVariant;
-            Merchant2CuteII.script.ModConfig.Options.MerchantVoiceVariant = cfg.MerchantVoiceVariant;
-            Merchant2CuteII.script.ModConfig.Options.ExtraDb = cfg.ExtraDb;
-            Merchant2CuteII.script.ModConfig.Options.FoulPotionAnimation = cfg.FoulPotionAnimation;
-        }
-        catch (Exception)
-        {
-            // ignore
-        }
+        SettingsHost.Load();
     }
 
     public static void Save()
     {
-        try
-        {
-            var cfg = new ConfigData
-            {
-                HandVariant = Merchant2CuteII.script.ModConfig.Options.HandVariant,
-                MerchantVoiceVariant = Merchant2CuteII.script.ModConfig.Options.MerchantVoiceVariant,
-                ExtraDb = Merchant2CuteII.script.ModConfig.Options.ExtraDb,
-                FoulPotionAnimation = Merchant2CuteII.script.ModConfig.Options.FoulPotionAnimation
-            };
-            string json = JsonSerializer.Serialize(cfg, new JsonSerializerOptions { WriteIndented = true });
-            var fa = Godot.FileAccess.Open(ConfigPath, Godot.FileAccess.ModeFlags.Write);
-            if (fa == null)
-                return;
-            fa.StoreString(json);
-            fa.Close();
-        }
-        catch (Exception)
-        {
-            // ignore
-        }
+        // 兼容壳：旧代码调 Save() 时也要广播，否则场景不刷新、BaseLib 的 cfg 也不会同步
+        SettingsHost.SaveAndNotify();
     }
 }

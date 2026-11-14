@@ -21,7 +21,8 @@ public static class SettingsEntryPatch
     {
         try
         {
-            MerchantSettingsEntry.Inject(__instance);
+            // 等场景装配完成，避免 _Ready 内向正在创建子节点的容器 AddChild。
+            Callable.From(() => MerchantSettingsEntry.Inject(__instance)).CallDeferred();
         }
         catch (Exception ex)
         {

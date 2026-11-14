@@ -39,9 +39,7 @@ public class MerchantConsoleCmd : AbstractConsoleCmd
     {
         try
         {
-            ConfigStore.Load();
-            SkinApplier.WarmUp();
-            MerchantRuntime.RefreshAll();
+            SettingsHost.EnsureLoaded();
         }
         catch (Exception ex)
         {
@@ -63,6 +61,7 @@ public class MerchantConsoleCmd : AbstractConsoleCmd
                 "point" => ProcessLegacyPoint(args),
                 "voice" => ProcessVoiceCommand(args),
                 "tune" => ProcessTuneCommand(args),
+                "config" => new CmdResult(true, SettingsStore.ActivePath + "\n" + ConfigPaths.DescribeEnvironment()),
                 _ => Usage(),
             };
         }
@@ -354,7 +353,8 @@ public class MerchantConsoleCmd : AbstractConsoleCmd
         // 保证控制台改的东西和其他入口完全一致。
         SettingsHost.SaveAndNotify();
         TaskHelper.RunSafely(MerchantRuntime.RefreshAllNextFrame());
-        return new CmdResult(true, msg: message);
+        return new CmdResult(SettingsStore.LastSaveSucceeded == true,
+            msg: SettingsStore.LastSaveSucceeded == true ? message : message + " (save failed: " + SettingsStore.LastError + ")");
     }
 
     /// <summary>设置界面按钮用：改完立刻刷新场景里的商人。</summary>

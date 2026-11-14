@@ -19,6 +19,7 @@ namespace Merchant2CuteII.script.Integration;
 public sealed class MerchantBaseLibConfig : SimpleModConfig
 {
     private static MerchantBaseLibConfig? instance;
+    private static bool _registering;
 
     public static bool Registered { get; private set; }
 
@@ -33,8 +34,10 @@ public sealed class MerchantBaseLibConfig : SimpleModConfig
         // 注意 1：BaseLib 3.4.7 的 ModConfig 没有静态 SaveDebounced<T>()，所以自持实例。
         // 注意 2：ctor 里的 Init() 会读 BaseLib 自己的 cfg 并写回静态属性，
         //         若该文件是旧值会覆盖玩家刚在别处改的配置 → 构造后必须用我们的 json 重新载入。
-        instance = new MerchantBaseLibConfig();
-        SettingsHost.Load();
+        // BaseLib 构造器会通过静态 setter 回填旧 cfg，期间不能覆盖主 JSON。
+        _registering = true;
+        try { instance = new MerchantBaseLibConfig(); }
+        finally { _registering = false; }
         instance.Save();
 
         // 任何入口改了设置都同步 BaseLib 的 cfg，避免下次启动被旧 cfg 反向覆盖。
@@ -138,6 +141,7 @@ public sealed class MerchantBaseLibConfig : SimpleModConfig
 
     private static void Set(System.Action mutate)
     {
+        if (_registering) return;
         SettingsHost.Mutate(_ => mutate());
     }
 }

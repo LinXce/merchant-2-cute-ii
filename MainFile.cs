@@ -31,28 +31,27 @@ public static class Merchant2CuteIIMod
 
     public static void Init()
     {
-        Harmony harmony = new Harmony(ModName);
-        PatchAllSafely(harmony);
-
         try
         {
             // 0) 版本能力位：先确定当前游戏版本，后面所有版本相关分支都查它
             script.Compat.GameVersion.ForceFromEnvironment();
             GD.Print("[Merchant2CuteII] " + script.Compat.VersionProfile.Describe());
 
+            // 0.5) 同步界面语言（设置页文案跟随游戏语言）
+            SettingsLocale.Sync();
+
             // 1) 先读配置：必须在任何补丁跑起来之前完成（含旧版 schema 1 的迁移）
-            SettingsHost.Load();
+            SettingsHost.EnsureLoaded();
+
+            Harmony harmony = new Harmony(ModName);
+            PatchAllSafely(harmony);
 
             // 1.5) 读视觉微调覆盖值（独立文件，不存在即全默认）
             MerchantVisualMotion.Load();
 
-            // 2) 预载两套骨架的 .tres，避免第一次进商店时卡顿
-            SkinApplier.WarmUp();
-
+            // 骨架在场景入树前按需加载：初始化期间其它 mod 的 PCK 可能尚未挂载完毕。
             script.ResourcePreloader.PreloadAll();
             TaskHelper.RunSafely(script.ResourcePreloader.PreloadAudioPathsAsync(script.ModConfig.Paths.MerchantVoicePaths));
-            // Run heavy spine preloads asynchronously to avoid blocking startup
-            TaskHelper.RunSafely(script.ResourcePreloader.PreloadSpinePathsAsync(script.ModConfig.Paths.SpinePaths));
 
             // 3) 设置一改，场景里已有的商人立刻跟上
             SettingsHost.Changed += () => MerchantRuntime.RefreshAll();

@@ -38,7 +38,8 @@ public static class MerchantSettingsEntry
         }
 
         // 原版锚点：%Modding 行 + 它上面的分隔线
-        Control? moddingRow = screen.GetNodeOrNull<Control>("%Modding");
+        Control? moddingRow = screen.GetNodeOrNull<Control>("%Modding")
+            ?? screen.FindChild("Modding", true, false) as Control;
         Control? moddingDivider = screen.GetNodeOrNull<Control>("%ModdingDivider");
         if (moddingRow == null || moddingRow.GetParent() == null)
         {
@@ -54,7 +55,7 @@ public static class MerchantSettingsEntry
             // 1) 分隔线（复制原版，保持一致）
             if (moddingDivider != null && moddingDivider.GetParent() == parent)
             {
-                var dividerCopy = (Control)moddingDivider.Duplicate();
+                var dividerCopy = (Control)moddingDivider.Duplicate((int)(Node.DuplicateFlags.Groups | Node.DuplicateFlags.Scripts));
                 dividerCopy.Name = DividerName;
                 dividerCopy.UniqueNameInOwner = false;
                 dividerCopy.Visible = true;
@@ -64,9 +65,10 @@ public static class MerchantSettingsEntry
             }
 
             // 2) 整行复制（含 Label 与 Button 的样式）
-            var rowCopy = (Control)moddingRow.Duplicate();
+            // 不复制信号/场景实例连接，防止按钮同时打开原版模组页和商人设置页。
+            var rowCopy = (Control)moddingRow.Duplicate((int)(Node.DuplicateFlags.Groups | Node.DuplicateFlags.Scripts));
             rowCopy.Name = RowName;
-            rowCopy.UniqueNameInOwner = false;
+            ClearUniqueNames(rowCopy);
             rowCopy.Visible = true;
             parent.AddChild(rowCopy);
             parent.MoveChild(rowCopy, index + 1);
@@ -150,6 +152,12 @@ public static class MerchantSettingsEntry
         }
 
         label.Set("text", text);
+    }
+
+    private static void ClearUniqueNames(Node node)
+    {
+        node.UniqueNameInOwner = false;
+        foreach (Node child in node.GetChildren()) ClearUniqueNames(child);
     }
 
     private static void WireButton(Node button, Node screen, Node row)

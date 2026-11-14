@@ -33,12 +33,18 @@ public static class SettingsJson
 
     public static ModSettings Parse(string? json, out bool wasLegacy)
     {
+        TryParse(json, out ModSettings settings, out wasLegacy);
+        return settings;
+    }
+
+    public static bool TryParse(string? json, out ModSettings settings, out bool wasLegacy)
+    {
         wasLegacy = false;
-        var settings = new ModSettings();
+        settings = new ModSettings();
 
         if (string.IsNullOrWhiteSpace(json))
         {
-            return settings;
+            return false;
         }
 
         JsonObject? root;
@@ -52,24 +58,25 @@ public static class SettingsJson
         }
         catch
         {
-            return settings;
+            return false;
         }
 
         if (root == null)
         {
-            return settings;
+            return false;
         }
 
         int schema = ReadInt(root, "schema") ?? 1;
-        bool hasNewShape = root.ContainsKey("realMerchant")
-            || root.ContainsKey("fakeMerchant")
-            || root.ContainsKey("voice");
+        JsonObject? real = Find(root, "realMerchant") as JsonObject;
+        JsonObject? fake = Find(root, "fakeMerchant") as JsonObject;
+        JsonObject? voice = Find(root, "voice") as JsonObject;
+        bool hasNewShape = real != null || fake != null || voice != null;
 
         if (hasNewShape)
         {
-            settings.RealMerchant = ReadSkin(root["realMerchant"] as JsonObject, MerchantKind.Real);
-            settings.FakeMerchant = ReadSkin(root["fakeMerchant"] as JsonObject, MerchantKind.Fake);
-            settings.Voice = ReadVoice(root["voice"] as JsonObject, settings.Voice);
+            settings.RealMerchant = ReadSkin(real, MerchantKind.Real);
+            settings.FakeMerchant = ReadSkin(fake, MerchantKind.Fake);
+            settings.Voice = ReadVoice(voice, settings.Voice);
         }
 
         if (schema < ModSettings.CurrentSchema || !hasNewShape)
@@ -81,7 +88,7 @@ public static class SettingsJson
         ApplyLegacyMigration(root, settings, hasNewShape);
         settings.Schema = ModSettings.CurrentSchema;
         settings.Normalize();
-        return settings;
+        return true;
     }
 
     public static string Serialize(ModSettings settings)
@@ -128,24 +135,25 @@ public static class SettingsJson
                 settings.FakeMerchant.HandVariant =
                     HandVariants.NormalizeFor(MerchantKind.Fake, SkeletonSets.Own, variant);
             }
-            else if (settings.RealMerchant.HandVariant == settings.FakeMerchant.HandVariant)
+            else
             {
-                // 新结构已存在但旧键被外部脚本改过：仅在两边一致时同步，避免覆盖精细配置
-                settings.RealMerchant.HandVariant =
-                    HandVariants.NormalizeFor(MerchantKind.Real, settings.RealMerchant.HandSet, variant);
-                settings.FakeMerchant.HandVariant =
-                    HandVariants.NormalizeFor(MerchantKind.Fake, settings.FakeMerchant.HandSet, variant);
+                // 旧字段只补缺项；显式选择 hand/default/0 同样是有效的新设置。
+                if (Find(Find(root, "realMerchant") as JsonObject ?? new JsonObject(), "handVariant") == null)
+                    settings.RealMerchant.HandVariant = HandVariants.NormalizeFor(MerchantKind.Real, settings.RealMerchant.HandSet, variant);
+                if (Find(Find(root, "fakeMerchant") as JsonObject ?? new JsonObject(), "handVariant") == null)
+                    settings.FakeMerchant.HandVariant = HandVariants.NormalizeFor(MerchantKind.Fake, settings.FakeMerchant.HandSet, variant);
             }
         }
 
         string? legacyVoice = ReadString(root, LegacyKeyVoiceVariant);
-        if (legacyVoice != null && settings.Voice.Language == VoiceLanguages.Default)
+        JsonObject voice = Find(root, "voice") as JsonObject ?? new JsonObject();
+        if (legacyVoice != null && Find(voice, "language") == null)
         {
             settings.Voice.Language = VoiceLanguages.Normalize(legacyVoice);
         }
 
         float? legacyDb = ReadFloat(root, LegacyKeyExtraDb);
-        if (legacyDb.HasValue && Math.Abs(settings.Voice.VolumeDb) < float.Epsilon)
+        if (legacyDb.HasValue && Find(voice, "volumeDb") == null)
         {
             settings.Voice.VolumeDb = legacyDb.Value;
         }

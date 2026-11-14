@@ -16,6 +16,7 @@ using MegaCrit.Sts2.Core.Nodes.Vfx.Utilities;
 using MegaCrit.Sts2.Core.Random;
 using MegaCrit.Sts2.Core.Debug;
 using MegaCrit.Sts2.Core.Helpers;
+using Merchant2CuteII.script.Compat;
 using Merchant2CuteII.script.Settings;
 
 namespace Merchant2CuteII.script;
@@ -81,6 +82,9 @@ public static class MerchantButtonPatch
     public static bool Prefix(NMerchantButton __instance)
     {
         if (__instance == null)
+            return true;
+
+        if (BlitzMerchantCompatibility.IsButton(__instance))
             return true;
 
         Node? merchantVisual = MerchantVisualResolver.ShouldUseLegacyMerchantVisualLookup()
@@ -152,7 +156,7 @@ public static class MerchantRoomFoulPotionPatch
     {
         try
         {
-            if (__instance == null)
+            if (__instance == null || BlitzMerchantCompatibility.IsRoom(__instance))
             {
                 return;
             }

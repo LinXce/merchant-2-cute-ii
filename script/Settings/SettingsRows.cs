@@ -13,6 +13,28 @@ namespace Merchant2CuteII.script.Settings;
 /// </summary>
 public static class SettingsRows
 {
+    public static void AddSaveStatus(VBoxContainer column, List<Action> refreshers)
+    {
+        var label = HintLabel(string.Empty);
+        column.AddChild(label);
+        void Refresh()
+        {
+            if (!GodotObject.IsInstanceValid(label)) return;
+            bool chinese = SettingsText.Language != UiLanguage.English;
+            string status = SettingsStore.LastSaveSucceeded == false
+                ? (chinese ? "保存失败：" : "Save failed: ") + SettingsStore.LastError
+                : SettingsStore.LastSaveSucceeded == true
+                    ? (chinese ? "已自动保存。" : "Saved automatically.")
+                    : (chinese ? "修改后自动保存。" : "Changes are saved automatically.");
+            label.Text = status + "\n" + (chinese
+                ? "身体与手部美术在下次进入商店时应用；手脚变体和语音即时生效。"
+                : "Body and hand art apply on your next shop visit; hand variants and voice apply immediately.")
+                + "\n" + ProjectSettings.GlobalizePath(SettingsStore.ActivePath);
+        }
+        refreshers.Add(Refresh);
+        Refresh();
+    }
+
     public static void AddTitle(VBoxContainer column, string text)
     {
         var title = new Label
@@ -83,7 +105,10 @@ public static class SettingsRows
 
         Rebuild(optionsProvider());
         dropdown.Selected = Math.Max(0, built.IndexOf(readCurrent()));
-        dropdown.ItemSelected += index => onSelected(built[(int)index]);
+        dropdown.ItemSelected += index =>
+        {
+            if (index >= 0 && index < built.Count) onSelected(built[(int)index]);
+        };
 
         refreshers?.Add(() =>
         {

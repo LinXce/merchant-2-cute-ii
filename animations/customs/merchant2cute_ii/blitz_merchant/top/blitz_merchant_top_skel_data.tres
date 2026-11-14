@@ -1,0 +1,12 @@
+[gd_resource type="SpineSkeletonDataResource" load_steps=4 format=3]
+[ext_resource type="SpineAtlasResource" path="res://animations/customs/merchant2cute_ii/blitz_merchant/top/blitz_merchant_top.atlas" id="1"]
+[ext_resource type="SpineSkeletonFileResource" path="res://animations/customs/merchant2cute_ii/blitz_merchant/top/blitz_merchant_top.spine-json" id="2"]
+[sub_resource type="SpineAnimationMix" id="mix_done"]
+from = "done"
+to = "done_loop"
+mix = 0.03
+[resource]
+atlas_res = ExtResource("1")
+skeleton_file_res = ExtResource("2")
+default_mix = 0.1
+animation_mixes = [SubResource("mix_done")]

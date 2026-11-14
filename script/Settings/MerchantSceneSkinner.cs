@@ -4,6 +4,7 @@ using Godot;
 using MegaCrit.Sts2.Core.Nodes.Events.Custom;
 using MegaCrit.Sts2.Core.Nodes.Rooms;
 using MegaCrit.Sts2.Core.Nodes.Screens.Shops;
+using Merchant2CuteII.script.Compat;
 
 namespace Merchant2CuteII.script.Settings;
 
@@ -26,6 +27,8 @@ namespace Merchant2CuteII.script.Settings;
 /// </summary>
 public static class MerchantSceneSkinner
 {
+    private enum SceneKind { Real, Fake, Blitz }
+
     /// <summary>骨架路径 → 已加载的 Godot 资源（保持引用，避免被 GC）。</summary>
     private static readonly Dictionary<string, Resource> ResourceCache = new();
 
@@ -45,25 +48,40 @@ public static class MerchantSceneSkinner
             return 0;
         }
 
-        MerchantKind? kind = DetectKind(root);
-        if (kind == null)
+        SceneKind? sceneKind = DetectKind(root);
+        if (sceneKind == null)
         {
             return 0;
         }
 
-        MerchantSkinSettings skin = SettingsHost.Current.For(kind.Value);
+        // 极速商人沿用真商人的手部设置；其身体有独立的 Spine 动画与代币槽。
+        MerchantKind kind = sceneKind == SceneKind.Fake ? MerchantKind.Fake : MerchantKind.Real;
+        MerchantSkinSettings skin = SettingsHost.Current.For(kind);
         int changed = 0;
 
-        string handTarget = SkeletonSetAssets.HandTresPath(kind.Value, skin.HandSet);
-        string bodyTarget = SkeletonSetAssets.BodyTresPath(kind.Value, skin.BodySet);
+        string handTarget = SkeletonSetAssets.HandTresPath(kind, skin.HandSet);
+        changed += ApplyToHandNodes(root, kind, handTarget);
 
-        changed += ApplyToHandNodes(root, kind.Value, handTarget);
-        changed += ApplyToBodyNodes(root, kind.Value, bodyTarget);
+        if (sceneKind == SceneKind.Blitz)
+        {
+            // v0.113 路径：只有真商人 own 美术有极速专用骨架。
+            // other 仍保留原生身体，不把假商人的整骨架放进极速按钮。
+            int bodyChanged = SkeletonSetAssets.IsFakeBodyArt(kind, skin.BodySet)
+                ? 0 : ApplyToBlitzBodyNodes(root);
+            string bodyStatus = bodyChanged > 0 ? "custom body applied" : "existing body retained";
+            GD.Print($"[Merchant2CuteII] blitz merchant: {bodyStatus} ({bodyChanged} body node(s)); "
+                     + $"{SkeletonSetAssets.DescribePart(kind, "hand", skin.HandSet)} ({changed} hand node(s) changed)");
+            changed += bodyChanged;
+            return changed;
+        }
+
+        string bodyTarget = SkeletonSetAssets.BodyTresPath(kind, skin.BodySet);
+        changed += ApplyToBodyNodes(root, kind, bodyTarget);
 
         if (changed > 0)
         {
-            GD.Print($"[Merchant2CuteII] scene skin applied: {SkeletonSetAssets.DescribePart(kind.Value, "hand", skin.HandSet)}, "
-                     + $"{SkeletonSetAssets.DescribePart(kind.Value, "body", skin.BodySet)}  ({changed} node(s))");
+            GD.Print($"[Merchant2CuteII] scene skin applied: {SkeletonSetAssets.DescribePart(kind, "hand", skin.HandSet)}, "
+                     + $"{SkeletonSetAssets.DescribePart(kind, "body", skin.BodySet)}  ({changed} node(s))");
         }
 
         return changed;
@@ -71,22 +89,30 @@ public static class MerchantSceneSkinner
 
     // --------------------------------------------------------------- kinds
 
-    private static MerchantKind? DetectKind(Node root)
+    private static SceneKind? DetectKind(Node root)
     {
+        // 必须先于 NMerchantRoom 判断：NBlitzMerchantRoom 继承它。
+        if (BlitzMerchantCompatibility.IsRoom(root)
+            || BlitzMerchantCompatibility.IsButton(root)
+            || BlitzMerchantCompatibility.IsVfx(root))
+        {
+            return SceneKind.Blitz;
+        }
+
         if (root is NMerchantRoom)
         {
-            return MerchantKind.Real;
+            return SceneKind.Real;
         }
 
         if (root is NFakeMerchant)
         {
-            return MerchantKind.Fake;
+            return SceneKind.Fake;
         }
 
         // 场景根可能是外层容器：向下找商人节点
         foreach (Node child in root.GetChildren())
         {
-            MerchantKind? kind = DetectKind(child);
+            SceneKind? kind = DetectKind(child);
             if (kind != null)
             {
                 return kind;
@@ -97,6 +123,42 @@ public static class MerchantSceneSkinner
     }
 
     // ---------------------------------------------------------------- parts
+
+    private static int ApplyToBlitzBodyNodes(Node root)
+    {
+        Resource? body = BlitzMerchantCompatibility.LoadCustomBody();
+        if (body == null)
+        {
+            return 0;
+        }
+
+        int changed = 0;
+        foreach (Node node in WalkIncludingRoot(root))
+        {
+            bool isVfx = BlitzMerchantCompatibility.IsVfx(node);
+            if (!isVfx && !BlitzMerchantCompatibility.IsButton(node))
+            {
+                continue;
+            }
+
+            Node? visual = node.GetNodeOrNull("%MerchantVisual")
+                ?? node.GetNodeOrNull("MerchantVisual")
+                ?? node.FindChild("MerchantVisual", true, false);
+            // 独立 VFX 场景把 SpineSprite 放在脚本节点的同一父节点下。
+            if (visual == null && isVfx)
+            {
+                visual = node.GetParent()?.GetNodeOrNull("SpineSprite");
+            }
+
+            if (visual != null && TrySetSkeletonData(visual,
+                    BlitzMerchantCompatibility.CustomBodySkeletonPath, "blitz body", body))
+            {
+                changed++;
+            }
+        }
+
+        return changed;
+    }
 
     private static int ApplyToHandNodes(Node root, MerchantKind kind, string target)
     {
@@ -129,6 +191,12 @@ public static class MerchantSceneSkinner
                 continue;
             }
 
+            // 即使未来从外层容器调用本方法，也不能把普通骨架塞给 Blitz 按钮。
+            if (BlitzMerchantCompatibility.IsButton(button))
+            {
+                continue;
+            }
+
             Node? visual = button.GetNodeOrNull("%MerchantVisual")
                 ?? button.GetNodeOrNull("MerchantVisual")
                 ?? button.FindChild("MerchantVisual", true, false);
@@ -142,19 +210,19 @@ public static class MerchantSceneSkinner
     }
 
     /// <summary>设置节点的 skeleton_data_res；与目标一致时跳过。返回是否真的改了。</summary>
-    private static bool TrySetSkeletonData(Node spineNode, string targetPath, string part)
+    private static bool TrySetSkeletonData(Node spineNode, string targetPath, string part, Resource? validatedTarget = null)
     {
         try
         {
             // 只有在「节点还没进树 / 还没 Ready」时才换：那时 spine 尚未初始化，
             // 改属性不会触发内部重建，也不会留下陈旧指针。已经 Ready 的节点一律跳过（安全优先）。
-            if (spineNode.IsInsideTree() && spineNode.IsNodeReady())
+            if (spineNode.IsInsideTree())
             {
-                GD.Print($"[Merchant2CuteII] skip {part} skeleton swap on '{spineNode.Name}': already ready in tree");
+                GD.Print($"[Merchant2CuteII] skip {part} skeleton swap on '{spineNode.Name}': already in tree");
                 return false;
             }
 
-            Resource? target = Load(targetPath);
+            Resource? target = validatedTarget ?? Load(targetPath);
             if (target == null)
             {
                 GD.PrintErr($"[Merchant2CuteII] skeleton resource missing: {targetPath}");
@@ -203,6 +271,15 @@ public static class MerchantSceneSkinner
         }
 
         return resource;
+    }
+
+    private static IEnumerable<Node> WalkIncludingRoot(Node root)
+    {
+        yield return root;
+        foreach (Node node in Walk(root))
+        {
+            yield return node;
+        }
     }
 
     private static IEnumerable<Node> Walk(Node root)

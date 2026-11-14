@@ -48,6 +48,7 @@ public static class SettingsPanel
     {
         try
         {
+            SettingsLocale.Sync();
             EnsureSubscribed();
             Refreshers.Clear();
 
@@ -141,6 +142,7 @@ public static class SettingsPanel
         };
         SettingsTheme.ApplyTitle(title);
         column.AddChild(title);
+        SettingsRows.AddSaveStatus(column, Refreshers);
         column.AddChild(new Control { CustomMinimumSize = new Vector2(0, 10) });
 
         AddSection(column, SettingsText.Section("real"), SettingsText.Hint("real"));

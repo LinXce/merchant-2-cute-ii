@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Godot;
 using MegaCrit.Sts2.Core.Nodes.Rooms;
 using MegaCrit.Sts2.Core.Nodes.Screens.Shops;
+using Merchant2CuteII.script.Compat;
 
 namespace Merchant2CuteII.script.Settings;
 
@@ -42,6 +43,12 @@ public static class MerchantVisualMotion
     public static void Apply(NMerchantButton button, Node2D visual)
     {
         if (button == null || visual == null || !GodotObject.IsInstanceValid(visual))
+        {
+            return;
+        }
+
+        // 极速按钮有自己的坐标和缩放；普通商店的 real/own 数值会把它移走。
+        if (BlitzMerchantCompatibility.IsButton(button))
         {
             return;
         }
@@ -144,6 +151,13 @@ public static class MerchantVisualMotion
 
             if (child is NMerchantButton button)
             {
+                if (BlitzMerchantCompatibility.IsButton(button))
+                {
+                    lines.Add($"{button.GetPath()}: blitz visual (normal-shop tuning skipped)");
+                    WalkWithReport(child, lines);
+                    continue;
+                }
+
                 Node? visual = button.GetNodeOrNull("%MerchantVisual")
                     ?? button.GetNodeOrNull("MerchantVisual")
                     ?? button.FindChild("MerchantVisual", true, false);
@@ -329,6 +343,12 @@ public static class MerchantVisualMotion
 
             if (child is NMerchantButton button)
             {
+                if (BlitzMerchantCompatibility.IsButton(button))
+                {
+                    Walk(child);
+                    continue;
+                }
+
                 Node? visual = button.GetNodeOrNull("%MerchantVisual")
                     ?? button.GetNodeOrNull("MerchantVisual")
                     ?? button.FindChild("MerchantVisual", true, false);

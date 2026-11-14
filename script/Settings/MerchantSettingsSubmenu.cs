@@ -26,6 +26,9 @@ public partial class MerchantSettingsSubmenu : NSubmenu
 
     public override void _Ready()
     {
+        // 打开时再同步一次：玩家可能在游戏设置里刚换过语言
+        SettingsLocale.Sync();
+
         BuildBackButton();
         BuildLayout();
         BuildRows();
@@ -116,6 +119,7 @@ public partial class MerchantSettingsSubmenu : NSubmenu
         _refreshers.Clear();
 
         SettingsRows.AddTitle(_content, SettingsText.Title);
+        SettingsRows.AddSaveStatus(_content, _refreshers);
 
         SettingsRows.AddSection(_content, SettingsText.Section("real"), SettingsText.Hint("real"));
         SettingsRows.AddMerchantRows(_content, MerchantKind.Real, _refreshers);

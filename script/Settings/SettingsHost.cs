@@ -6,6 +6,7 @@ namespace Merchant2CuteII.script.Settings;
 public static class SettingsHost
 {
     private static ModSettings _current = new();
+    private static bool _loaded;
 
     public static ModSettings Current => _current;
 
@@ -15,16 +16,24 @@ public static class SettingsHost
     public static void Load()
     {
         _current = SettingsStore.Load();
+        _loaded = true;
+    }
+
+    public static void EnsureLoaded()
+    {
+        if (!_loaded) Load();
     }
 
     public static bool Save()
     {
+        EnsureLoaded();
         return SettingsStore.Save(_current);
     }
 
     /// <summary>归一化 + 保存 + 广播。给「已经直接改过 Current 上的值」的调用方用（如控制台命令）。</summary>
     public static void SaveAndNotify()
     {
+        EnsureLoaded();
         _current.Normalize();
         Save();
         NotifyChanged();
@@ -32,12 +41,18 @@ public static class SettingsHost
 
     public static void NotifyChanged()
     {
-        Changed?.Invoke();
+        if (Changed == null) return;
+        foreach (Action handler in Changed.GetInvocationList())
+        {
+            try { handler(); }
+            catch (Exception ex) { Godot.GD.PrintErr($"[Merchant2CuteII] settings listener failed: {ex.Message}"); }
+        }
     }
 
     /// <summary>读 + 改 + 存 的便捷写法。</summary>
     public static void Mutate(Action<ModSettings> mutate, bool save = true)
     {
+        EnsureLoaded();
         mutate(_current);
         _current.Normalize();
         if (save)

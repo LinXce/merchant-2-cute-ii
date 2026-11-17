@@ -54,6 +54,7 @@ public static class MerchantVisualMotion
         }
 
         MerchantKind kind = SkinApplier.ResolveKind(button) ?? MerchantKind.Real;
+        if (!SkinChangerCompatibility.MayApply(button, kind)) return;
         string key = Key(kind, SettingsHost.Current.For(kind));
 
         ulong id = visual.GetInstanceId();

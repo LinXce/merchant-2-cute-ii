@@ -1,5 +1,8 @@
 using System;
+using System.Reflection;
 using Godot;
+using MegaCrit.Sts2.Core.Entities.Merchant;
+using MegaCrit.Sts2.Core.Nodes.Screens.Shops;
 
 namespace Merchant2CuteII.script.Compat;
 
@@ -17,12 +20,25 @@ public static class BlitzMerchantCompatibility
         "res://animations/customs/merchant2cute_ii/blitz_merchant/top/blitz_merchant_top_skel_data.tres";
 
     private static Resource? _customBody;
+    private static readonly PropertyInfo? IsBlitzShopProperty = typeof(MerchantInventory).GetProperty("IsBlitzShop");
 
     public static bool IsRoom(Node? node) => HasType(node, "NBlitzMerchantRoom");
 
     public static bool IsButton(Node? node) => HasType(node, "NBlitzMerchantButton");
 
     public static bool IsVfx(Node? node) => HasType(node, "NBlitzMerchantVfx");
+
+    public static bool IsInBlitzShop(Node? node)
+    {
+        for (Node? current = node; current != null; current = current.GetParent())
+        {
+            if (IsRoom(current) || IsButton(current) || IsVfx(current)) return true;
+            // 独立库存或预览可能尚未挂到房间；旧游戏没有该属性时保留原规则。
+            if (current is NMerchantInventory { Inventory: { } inventory }
+                && IsBlitzShopProperty?.GetValue(inventory) is true) return true;
+        }
+        return false;
+    }
 
     private static bool HasType(Node? node, string name)
     {
@@ -36,21 +52,25 @@ public static class BlitzMerchantCompatibility
     /// 在实例入树前检查专用骨架。绝不把普通商人的骨架作为极速模式回退。
     /// 仅在已识别的极速场景调用，因此 v0.111 不会加载新资源。
     /// </summary>
-    public static Resource? LoadCustomBody()
+    // Skin Changer 1.0.36 用无参签名识别极速契约，不能仅用带可选参数的方法替代。
+    public static Resource? LoadCustomBody() => LoadCustomBodyFor(null);
+
+    public static Resource? LoadCustomBodyFor(Node? context)
     {
-        if (_customBody != null && GodotObject.IsInstanceValid(_customBody))
+        bool managed = SkinChangerCompatibility.IsManaged;
+        if (!managed && _customBody != null && GodotObject.IsInstanceValid(_customBody))
         {
             return _customBody;
         }
 
-        if (!ResourceLoader.Exists(CustomBodySkeletonPath))
+        if (!managed && !ResourceLoader.Exists(CustomBodySkeletonPath))
         {
             return null;
         }
 
         try
         {
-            Resource? resource = ResourceLoader.Load<Resource>(CustomBodySkeletonPath);
+            Resource? resource = SkinChangerCompatibility.LoadResource(CustomBodySkeletonPath, context, Settings.MerchantKind.Real);
             if (resource == null || !resource.HasMethod("is_skeleton_data_loaded")
                 || !resource.Call("is_skeleton_data_loaded").AsBool())
             {
@@ -71,7 +91,7 @@ public static class BlitzMerchantCompatibility
                 if (!HasEntry(resource, "find_slot", $"TOKEN_{index}")) return null;
             }
 
-            _customBody = resource;
+            if (!managed) _customBody = resource;
             return resource;
         }
         catch (Exception ex)

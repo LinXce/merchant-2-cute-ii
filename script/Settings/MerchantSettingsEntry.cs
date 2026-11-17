@@ -122,6 +122,10 @@ public static class MerchantSettingsEntry
                 stack.AddChild(page);
             }
 
+            // 管理器会暂停未选中提供者的自定义节点。只恢复设置页的输入，
+            // 不恢复任何商人外观节点或提供者补丁。
+            if (Compat.SkinChangerCompatibility.IsManaged) page.ProcessMode = Node.ProcessModeEnum.Always;
+
             if (ReferenceEquals(stack.Peek(), page))
             {
                 return; // 已经在栈顶，别重复压入

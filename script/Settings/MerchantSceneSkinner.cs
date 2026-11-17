@@ -56,6 +56,8 @@ public static class MerchantSceneSkinner
 
         // 极速商人沿用真商人的手部设置；其身体有独立的 Spine 动画与代币槽。
         MerchantKind kind = sceneKind == SceneKind.Fake ? MerchantKind.Fake : MerchantKind.Real;
+        if (!SkinChangerCompatibility.MayApply(root, kind)) return 0;
+        SettingsHost.EnsureLoaded();
         MerchantSkinSettings skin = SettingsHost.Current.For(kind);
         int changed = 0;
 
@@ -99,6 +101,9 @@ public static class MerchantSceneSkinner
             return SceneKind.Blitz;
         }
 
+        if (root is NFakeMerchantInventory) return SceneKind.Fake;
+        if (SkinChangerCompatibility.IsManaged && root is NMerchantInventory) return SceneKind.Real;
+
         if (root is NMerchantRoom)
         {
             return SceneKind.Real;
@@ -126,7 +131,7 @@ public static class MerchantSceneSkinner
 
     private static int ApplyToBlitzBodyNodes(Node root)
     {
-        Resource? body = BlitzMerchantCompatibility.LoadCustomBody();
+        Resource? body = BlitzMerchantCompatibility.LoadCustomBodyFor(root);
         if (body == null)
         {
             return 0;
@@ -222,7 +227,9 @@ public static class MerchantSceneSkinner
                 return false;
             }
 
-            Resource? target = validatedTarget ?? Load(targetPath);
+            MerchantKind kind = SkinApplier.ResolveKind(spineNode) ?? MerchantKind.Real;
+            Resource? target = validatedTarget ?? (SkinChangerCompatibility.IsManaged
+                ? SkinChangerCompatibility.LoadResource(targetPath, spineNode, kind) : Load(targetPath));
             if (target == null)
             {
                 GD.PrintErr($"[Merchant2CuteII] skeleton resource missing: {targetPath}");

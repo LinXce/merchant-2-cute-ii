@@ -19,9 +19,13 @@ public static class MerchantRuntime
         return SettingsJson.ShouldShowInventoryLeg(SettingsHost.Current.For(kind), kind);
     }
 
+    public static bool ShouldShowInventoryLegFor(MerchantKind kind, Node context) =>
+        !Compat.BlitzMerchantCompatibility.IsInBlitzShop(context) && ShouldShowInventoryLeg(kind);
+
     /// <summary>重新套用所有设置到当前场景树。返回受影响的手部节点数量。</summary>
     public static int RefreshAll()
     {
+        if (Compat.SkinChangerCompatibility.TryRefresh(out int managedCount)) return managedCount;
         // 注意：这里**不能** SkinApplier.ForgetAll()。
         // 缓存记录的是「这根骨架当前被我换成了哪套」；清掉之后，玩家从"另一套"切回"本套"时
         // NeedsSkeletonSwap 会因为"没动过 + 选的是 own"而跳过，导致画面停留在借来的美术上。
@@ -45,7 +49,7 @@ public static class MerchantRuntime
             }
             else if (node is TextureRect rect && rect.Name == "MerchantInventoryLeg")
             {
-                rect.Visible = ShouldShowInventoryLeg(MerchantKind.Real);
+                rect.Visible = ShouldShowInventoryLegFor(MerchantKind.Real, rect);
             }
             // 注意：这里刻意不换骨架。骨架在场景进树前（MerchantSceneSkinPatch）就选好了；
             // 运行期再 SetSkeletonDataRes 会打断 spine 并使游戏缓存的 bone/skeleton 指针失效。

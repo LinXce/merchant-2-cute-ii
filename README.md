@@ -3,7 +3,7 @@
 ![godot](https://img.shields.io/badge/godot-4.5-478cbf?style=flat)
 ![dotnet](https://img.shields.io/badge/.NET-8.0-512bd4?style=flat)
 ![game](https://img.shields.io/badge/STS2-0.107.1%20~%200.113.x-8a1c1c?style=flat)
-![version](https://img.shields.io/badge/version-2.0.0-red?style=flat)
+![version](https://img.shields.io/badge/version-2.0.2-red?style=flat)
 ![license](https://img.shields.io/badge/license-GPL--3.0-blue?style=flat)
 
 [English](README.md) · [简体中文](README.zh-CN.md)
@@ -31,12 +31,16 @@ Artwork was AI-generated and then edited by hand.
 - **Texture replacement only** — merchant art is swapped, gameplay logic is untouched (gold rewards, the reverse merchant's fight transition, dialogue and screen shake all stay vanilla).
 - **Body / hand sets can be mixed** — pick which art set the body uses and which the hands use, independently, for each merchant.
 - **Hand variants** — `hand` / `barefoot` / `white stockings` / `black stockings`. Which variants are available follows the hand art you picked.
-- **Shop leg texture** — an extra leg image in the shop UI. It only appears together with the `hand` variant and can be toggled on/off (default **on**).
+- **Shop leg texture** — an extra leg image in the normal shop UI. It only appears together with the `hand` variant and can be toggled on/off (default **on**). Blitz shops always hide it without changing the saved preference.
 - **Voice replacement** — vanilla / Japanese / Chinese, with a volume slider (−12 ~ +12 dB). Covers both merchants, including the reverse merchant's laugh and the "thank you" line after a Foul Potion.
 - **Legacy config migration** — old `merchant2cute_config.json` is migrated automatically, and legacy key names are still written so downgrading stays safe.
 - **Version tolerant** — no minimum game version is declared; version differences only select a code path (verified on 0.107.1 and 0.111.0).
 
 ## In-game settings
+
+On game 0.113.1+, optional cooperation with **Skin Changer 1.0.36** preserves the original merchant config and console commands. A **Merchant appearance** button is also available on this mod's details page, including before selecting this skin. Deferred settings refreshes only affect the currently selected provider; older games retain their existing runtime path.
+
+The settings service stays available after switching away from this merchant skin, including when Skin Changer removes the skin's runtime patches. Opening the mod details also loads the settings service without activating the skin.
 
 `Settings → Game Settings → 「商人外观」 → 打开设置` opens a full settings page (not a popup), with the same layout as the vanilla settings screen. Changes apply immediately.
 
@@ -86,7 +90,7 @@ Compatibility is handled with capability flags — a couple of version threshold
 - Prevents console startup and optional BaseLib initialization from overwriting the main config.
 - Keeps hand/foot controls in the settings page and displays save status, config location and application timing.
 - Loads skeletons on demand and prevents replacement after nodes enter the tree; settings entry copies exclude original signal connections.
-- Engine and logic checks pass; complete game testing with other mods remains pending. See `release/v2.0.0/CHECKS.txt`.
+- Engine and logic checks pass; complete game testing with other mods remains pending. The workspace validation record is at `../../dist/merchant-2-cute-ii/v2.0.0/CHECKS.txt`.
 
 **v1.6.1**
 

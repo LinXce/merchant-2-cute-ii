@@ -42,6 +42,7 @@ public static class Merchant2CuteIIMod
 
             // 1) 先读配置：必须在任何补丁跑起来之前完成（含旧版 schema 1 的迁移）
             SettingsHost.EnsureLoaded();
+            MerchantSettingsAvailability.EnsureAvailable();
 
             Harmony harmony = new Harmony(ModName);
             PatchAllSafely(harmony);

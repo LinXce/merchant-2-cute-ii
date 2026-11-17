@@ -3,7 +3,7 @@
 ![godot](https://img.shields.io/badge/godot-4.5-478cbf?style=flat)
 ![dotnet](https://img.shields.io/badge/.NET-8.0-512bd4?style=flat)
 ![game](https://img.shields.io/badge/STS2-0.107.1%20~%200.113.x-8a1c1c?style=flat)
-![version](https://img.shields.io/badge/version-2.0.0-red?style=flat)
+![version](https://img.shields.io/badge/version-2.0.2-red?style=flat)
 ![license](https://img.shields.io/badge/license-GPL--3.0-blue?style=flat)
 
 [English](README.md) · [简体中文](README.zh-CN.md)
@@ -37,6 +37,10 @@
 - **版本宽容**——不声明最低游戏版本；版本差异只决定走哪条代码分支（0.107.1 与 0.111.0 均已实测通过）。
 
 ## 游戏内设置
+
+游戏 0.113.1 起提供 **Skin Changer 1.0.36** 的可选兼容路径，继续使用原商人配置与控制台命令。在本 mod 的详情页也可打开「商人外观」，不必先选中皮肤；延迟刷新只作用于当前选中的本 mod 商人。旧游戏沿用原运行路径。
+
+切换到其他商人皮肤后，设置服务继续保留，不依赖皮肤的运行期补丁。未选中本皮肤时，打开本 mod 详情也能加载设置服务。极速模式的购买界面始终隐藏额外的腿部贴图；普通商店仍按原开关显示，不会改写玩家保存的选择。
 
 `设置 → 游戏设置 → 「商人外观」 → 打开设置`，打开的是**整页设置界面**（不是弹窗），排版跟随原版设置页，改动即时生效。
 

@@ -1,7 +1,7 @@
 <Project Sdk="Godot.NET.Sdk/4.5.1">
     <PropertyGroup>
         <TargetFramework>net9.0</TargetFramework>
-        <Version>2.0.0</Version>
+        <Version>2.0.2</Version>
         <ImplicitUsings>true</ImplicitUsings>
         <Nullable>enable</Nullable>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
@@ -59,7 +59,7 @@
     <PropertyGroup>
         <MerchantBaseLib Condition="'$(MerchantBaseLib)' == ''">false</MerchantBaseLib>
         <MerchantRitsuLib Condition="'$(MerchantRitsuLib)' == ''">false</MerchantRitsuLib>
-        <MerchantLibsRoot Condition="'$(MerchantLibsRoot)' == ''">$(MSBuildProjectDirectory)\..\..\other</MerchantLibsRoot>
+        <MerchantLibsRoot Condition="'$(MerchantLibsRoot)' == ''">$(MSBuildProjectDirectory)\..\..\libs</MerchantLibsRoot>
         <DefineConstants Condition="'$(MerchantBaseLib)' == 'true'">$(DefineConstants);MERCHANT_BASELIB</DefineConstants>
         <DefineConstants Condition="'$(MerchantRitsuLib)' == 'true'">$(DefineConstants);MERCHANT_RITSILIB</DefineConstants>
     </PropertyGroup>

@@ -25,7 +25,7 @@ namespace MegaCrit.Sts2.Core.DevConsole.ConsoleCommands;
 /// merchant point hand|foot|white|black|toggle|status
 /// </code>
 /// </summary>
-public class MerchantConsoleCmd : AbstractConsoleCmd
+public partial class MerchantConsoleCmd : AbstractConsoleCmd
 {
     public override string CmdName => "merchant";
 
@@ -40,6 +40,9 @@ public class MerchantConsoleCmd : AbstractConsoleCmd
         try
         {
             SettingsHost.EnsureLoaded();
+            // 保留 Skin Changer 已公开的旧设置契约；只读配置，不刷新世界。
+            _ = ModConfig.Options.UseFootLike;
+            MerchantSettingsAvailability.EnsureAvailable();
         }
         catch (Exception ex)
         {
@@ -58,7 +61,7 @@ public class MerchantConsoleCmd : AbstractConsoleCmd
                 "status" => new CmdResult(true, MerchantRuntime.DescribeCurrent()),
                 "real" => ProcessMerchant(MerchantKind.Real, args),
                 "fake" => ProcessMerchant(MerchantKind.Fake, args),
-                "point" => ProcessLegacyPoint(args),
+                "point" => ProcessPointCommand(args),
                 "voice" => ProcessVoiceCommand(args),
                 "tune" => ProcessTuneCommand(args),
                 "config" => new CmdResult(true, SettingsStore.ActivePath + "\n" + ConfigPaths.DescribeEnvironment()),
@@ -159,7 +162,7 @@ public class MerchantConsoleCmd : AbstractConsoleCmd
     // -------------------------------------------------------------- legacy
 
     /// <summary>旧命令：同时改两个商人（旧版只有一个全局 HandVariant）。</summary>
-    private static CmdResult ProcessLegacyPoint(string[] args)
+    private static CmdResult ProcessPointCommand(string[] args)
     {
         string verb = args.Length > 1 ? args[1].ToLowerInvariant() : "status";
 
@@ -186,7 +189,12 @@ public class MerchantConsoleCmd : AbstractConsoleCmd
             HandVariants.NormalizeFor(MerchantKind.Fake, settings.FakeMerchant.HandSet, next);
 
 
-        return Commit($"both merchants hand -> {HandVariants.Normalize(next)} (legacy behaviour)");
+        // 此直接调用也是 Skin Changer 审核旧接口时查找的原配置保存入口。
+        ConfigStore.Save();
+        TaskHelper.RunSafely(MerchantRuntime.RefreshAllNextFrame());
+        string message = $"both merchants hand -> {HandVariants.Normalize(next)} (legacy behaviour)";
+        return new CmdResult(SettingsStore.LastSaveSucceeded == true,
+            SettingsStore.LastSaveSucceeded == true ? message : message + " (save failed: " + SettingsStore.LastError + ")");
     }
 
     private static CmdResult ProcessVoiceCommand(string[] args)

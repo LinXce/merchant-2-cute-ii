@@ -28,6 +28,8 @@ public static class SkinApplier
                 return MerchantKind.Fake;
             }
 
+            if (current is NFakeMerchantInventory) return MerchantKind.Fake;
+
             if (current is NMerchantRoom)
             {
                 return MerchantKind.Real;
@@ -59,6 +61,7 @@ public static class SkinApplier
         }
 
         Node? host = handNode.GetParent();
+        if (!Compat.SkinChangerCompatibility.MayApply(handNode, kind.Value)) return false;
         if (host == null)
         {
             return false;
@@ -69,7 +72,7 @@ public static class SkinApplier
         try
         {
             var sprite = new MegaSprite(host);
-            return ApplyHandVariant(host, sprite, skin.HandVariant);
+            return ApplyHandVariant(handNode, kind.Value, host, sprite, skin.HandVariant);
         }
         catch (Exception ex)
         {
@@ -78,7 +81,7 @@ public static class SkinApplier
         }
     }
 
-    private static bool ApplyHandVariant(Node host, MegaSprite sprite, string variant)
+    private static bool ApplyHandVariant(Node hand, MerchantKind kind, Node host, MegaSprite sprite, string variant)
     {
         string[] chain = HandVariants.AnimationFallbackChain(variant);
 
@@ -100,7 +103,12 @@ public static class SkinApplier
 
         if (!sprite.IsAnimationStateReady())
         {
-            host.RunWhenSpineReady(sprite, animState => SetFirstAvailable(animState, sprite, chain));
+            host.RunWhenSpineReady(sprite, animState =>
+            {
+                if (GodotObject.IsInstanceValid(hand) && !hand.IsQueuedForDeletion()
+                    && Compat.SkinChangerCompatibility.MayApply(hand, kind))
+                    SetFirstAvailable(animState, sprite, HandVariants.AnimationFallbackChain(SettingsFor(kind).HandVariant));
+            });
             return true;
         }
 

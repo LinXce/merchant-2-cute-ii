@@ -47,6 +47,9 @@ public static class VersionProfile
     public static bool LegacyMerchantVisualLookup =>
         !GameVersion.Known || GameVersion.Below(VisualOwnerMajor, VisualOwnerMinor, VisualOwnerPatch);
 
+    /// <summary>0.113.1 起启用可选 Skin Changer 协作；旧游戏继续原有路径。</summary>
+    public static bool SkinChangerCooperation => GameVersion.Known && GameVersion.AtLeast(0, 113, 1);
+
     public static string Describe()
     {
         return string.Join(", ",
@@ -55,6 +58,7 @@ public static class VersionProfile
                 "game=" + GameVersion.Describe(),
                 "legacyAnimSig=" + Flag(LegacyAnimationSignature),
                 "legacyVisualLookup=" + Flag(LegacyMerchantVisualLookup),
+                "skinChangerCooperation=" + Flag(SkinChangerCooperation),
             });
     }
 

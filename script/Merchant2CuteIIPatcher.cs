@@ -154,6 +154,7 @@ public static class MerchantRoomFoulPotionPatch
     [HarmonyPrefix]
     public static void Prefix(NMerchantRoom __instance)
     {
+        if (!SkinChangerCompatibility.MayApply(__instance, MerchantKind.Real)) return;
         try
         {
             if (__instance == null || BlitzMerchantCompatibility.IsRoom(__instance))
@@ -290,6 +291,11 @@ internal static class MerchantVoiceRouter
         {
             return false;
         }
+
+        if (!sfx.Contains("merchant", System.StringComparison.OrdinalIgnoreCase)) return false;
+        MerchantKind kind = sfx.Contains("reverse_merchant", System.StringComparison.OrdinalIgnoreCase)
+            ? MerchantKind.Fake : MerchantKind.Real;
+        if (!SkinChangerCompatibility.MayApply(null, kind)) return false;
 
         string? voicePath = ModConfig.Voice.GetMerchantVoicePath(sfx);
         if (string.IsNullOrEmpty(voicePath))
@@ -464,7 +470,14 @@ public static class MerchantInventoryLegPatch
             return;
         }
 
+        if (BlitzMerchantCompatibility.IsInBlitzShop(__instance))
+        {
+            __instance.GetNodeOrNull<TextureRect>("MerchantInventoryLeg")?.Hide();
+            return;
+        }
+
         Control? inventoryRoot = __instance;
+        if (!SkinChangerCompatibility.MayApply(__instance, MerchantKind.Real)) return;
         Control? slotsContainer = __instance.GetNodeOrNull<Control>("%SlotsContainer");
         if (slotsContainer == null)
         {
@@ -472,7 +485,7 @@ public static class MerchantInventoryLegPatch
             return;
         }
 
-        if (slotsContainer.GetNodeOrNull<TextureRect>("MerchantInventoryLeg") != null)
+        if (inventoryRoot.GetNodeOrNull<TextureRect>("MerchantInventoryLeg") != null)
         {
             return;
         }
@@ -497,7 +510,7 @@ public static class MerchantInventoryLegPatch
             RotationDegrees = ModConfig.Merchant.LegRotationDegrees,
             Scale = ModConfig.Merchant.LegScale,
             MouseFilter = Control.MouseFilterEnum.Ignore,
-            Visible = MerchantRuntime.ShouldShowInventoryLeg(MerchantKind.Real),
+            Visible = MerchantRuntime.ShouldShowInventoryLegFor(MerchantKind.Real, __instance),
             ZIndex = 0,
             ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
             StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
@@ -534,6 +547,12 @@ internal static class MerchantInventoryLegMotion
     {
         if (inventory == null)
         {
+            return;
+        }
+
+        if (BlitzMerchantCompatibility.IsInBlitzShop(inventory))
+        {
+            inventory.GetNodeOrNull<TextureRect>("MerchantInventoryLeg")?.Hide();
             return;
         }
 
